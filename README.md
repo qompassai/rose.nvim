@@ -1,6 +1,6 @@
-# rose.nvim: A Qompass tool for quality public-source AI
+# rose.nvim
 
-<div align="center">
+## A Qompass tool for quality public-source AI
 
 ## Requires
 
@@ -25,7 +25,7 @@ Example with Lazy
 {
     "qompassai/rose.nvim",
     opts = {
-        model = "phi3.5", -- The default model to use.
+        model = "llama3.2:3b", -- The default model to use.
         quit_map = "q", -- set keymap to close the response window
         retry_map = "<c-r>", -- set keymap to re-send the current prompt
         accept_map = "<c-cr>", -- set keymap to replace the previous selection with the last result
@@ -82,7 +82,7 @@ vim.keymap.set('v', '<leader>]', ':Rose Enhance_Grammar_Spelling<CR>')
 Once a conversation is started, the whole context is sent to the LLM. That allows you to ask follow-up questions with
 
 ```lua
-:Gen Chat
+:Rose Chat
 ```
 
 and once the window is closed, you start with a fresh conversation.

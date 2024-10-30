@@ -38,7 +38,7 @@ local function trim_table(tbl)
 end
 
 local default_options = {
-    model = "mistral",
+    model = "llama3.2:3b",
     host = "localhost",
     port = "11434",
     file = false,
