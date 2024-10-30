@@ -102,11 +102,11 @@ require('rose').select_model()
 Example:
 
 ````lua
-require('gen').prompts['Elaborate_Text'] = {
+require('rose').prompts['Elaborate_Text'] = {
   prompt = "Elaborate the following text:\n$text",
   replace = true
 }
-require('gen').prompts['Fix_Code'] = {
+require('rose').prompts['Fix_Code'] = {
   prompt = "Fix the following code. Only output the result in format ```$filetype\n...\n```:\n```$filetype\n$text\n```",
   replace = true,
   extract = "```$filetype\n(.-)```"
