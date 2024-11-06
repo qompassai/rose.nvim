@@ -141,8 +141,8 @@ function Perplexity:process_onexit(res)
   end
 end
 
--- Returns the list of available models with their parameters
----@return table
+-- Returns the list of available models
+---@return string[]
 function Perplexity:get_available_models()
   local base_models = {
     "llama-3.1-sonar-small-128k-online",
@@ -156,15 +156,11 @@ function Perplexity:get_available_models()
 
   local is_pro = self:verify_pro_access()
   if is_pro then
-    -- Simply add pro models to the list
     table.insert(base_models, "gpt-4-omni")
     table.insert(base_models, "claude-3.5-sonnet")
     table.insert(base_models, "claude-3-opus")
     table.insert(base_models, "sonar-large-32k")
     table.insert(base_models, "pplx-default")
-    logger.info("Perplexity Pro models enabled")
-  else
-    logger.info("Using Perplexity Free tier models")
   end
 
   return base_models
