@@ -41,6 +41,13 @@ end
 --- @param model_type string # Type of model (e.g., "chat_model", "command_model").
 --- @param available_models table
 function State:load_models(provider, model_type, available_models)
+  -- Check if available_models[provider] is nil
+  if available_models[provider] == nil then
+    -- Log or handle the error here if necessary
+    vim.api.nvim_err_writeln("Provider '" .. provider .. "' not found in available_models.")
+    return
+  end
+
   local state_model = self.file_state and self.file_state[provider] and self.file_state[provider][model_type]
   local is_valid_model = state_model and utils.contains(available_models[provider], state_model)
 
