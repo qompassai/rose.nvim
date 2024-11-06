@@ -153,14 +153,14 @@ function Perplexity:get_available_models()
     "llama-3.1-8b-instruct",
     "llama-3.1-70b-instruct"
   }
-
-  local is_pro = self:verify_pro_access()
+local is_pro = false
+--  local is_pro = self:verify_pro_access()
   if is_pro then
-    table.insert(base_models, "gpt-4-omni")
-    table.insert(base_models, "claude-3.5-sonnet")
-    table.insert(base_models, "claude-3-opus")
-    table.insert(base_models, "sonar-large-32k")
-    table.insert(base_models, "pplx-default")
+--    table.insert(base_models, "GPT-4-o")
+--    table.insert(base_models, "claude-3.5-sonnet")
+--    table.insert(base_models, "claude-3-opus")
+--    table.insert(base_models, "sonar-large-32k")
+--    table.insert(base_models, "pplx-default")
   end
 
   return base_models
