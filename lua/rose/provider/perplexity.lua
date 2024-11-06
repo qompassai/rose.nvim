@@ -161,10 +161,7 @@ function Perplexity:get_available_models()
       "claude-3.5-sonnet",
       "claude-3-opus",
       "sonar-large-32k",
-      "pplx-default",
-      "claude-3-sonnet-20240229",
-      "claude-3-opus-20240229",
-      "claude-3-haiku-20240307"
+      "pplx-default"
     }
     for _, model in ipairs(pro_models) do
       table.insert(base_models, model)
@@ -234,6 +231,54 @@ function Perplexity:send_query(payload, callback)
     end
   })
   job:start()
+end
+
+-- Sends a user query using WebSocket for real-time interaction
+---@param payload table
+---@param callback function
+function Perplexity:send_query_ws(payload, callback)
+  if not self:verify() then
+    logger.error("API key verification failed")
+    return
+  end
+
+  local ws_url = "wss://api.perplexity.ai/realtime"
+  local client = websocket()
+
+  client:on_open(function()
+    local message = vim.json.encode(payload)
+    client:send(message)
+  end)
+
+  client:on_message(function(_, message)
+    local success, parsed_message = pcall(vim.json.decode, message)
+    if success and parsed_message.choices and parsed_message.choices[1] then
+      callback(parsed_message.choices[1].message.content)
+    else
+      logger.error("Failed to parse WebSocket message: " .. message)
+    end
+  end)
+
+  client:on_error(function(_, err)
+    logger.error("WebSocket error: " .. err)
+  end)
+
+  client:on_close(function(_, code, reason)
+    logger.info(string.format("WebSocket closed - Code: %s, Reason: %s", code, reason))
+  end)
+
+  client:connect(ws_url, nil, {
+    headers = {
+      ["Authorization"] = "Bearer " .. self.api_key,
+      ["Content-Type"] = "application/json",
+    }
+  })
+end
+
+-- Fixes to prevent repeated outputs and hallucinations
+---@param response string
+function Perplexity:remove_repeated_text(response)
+  return response:gsub("%b<>", ""):gsub("\\b(\\w+)\\b%s*%1\\b", "%1")
 end
 
 return Perplexity
