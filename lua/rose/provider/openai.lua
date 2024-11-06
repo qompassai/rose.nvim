@@ -64,12 +64,32 @@ function OpenAI:preprocess_payload(payload)
     end
     payload.stream = nil
     payload.logprobs = nil
-    payload.temperature = 1
-    payload.top_p = 1
-    payload.top_n = 1
-    payload.presence_penalty = 0
-    payload.frequency_penalty = 0
+    payload.temperature = tonumber(1)
+    payload.top_p = tonumber(1)
+    payload.top_n = tonumber(1)
+    payload.presence_penalty = tonumber(0)
+    payload.frequency_penalty = tonumber(0)
   end
+  -- Explicitly convert other numeric parameters to ensure they are numbers
+  if payload.temperature then
+    payload.temperature = tonumber(payload.temperature)
+  end
+  if payload.max_tokens then
+    payload.max_tokens = tonumber(payload.max_tokens)
+  end
+  if payload.max_completion_tokens then
+    payload.max_completion_tokens = tonumber(payload.max_completion_tokens)
+  end
+  if payload.top_p then
+    payload.top_p = tonumber(payload.top_p)
+  end
+  if payload.presence_penalty then
+    payload.presence_penalty = tonumber(payload.presence_penalty)
+  end
+  if payload.frequency_penalty then
+    payload.frequency_penalty = tonumber(payload.frequency_penalty)
+  end
+
   return utils.filter_payload_parameters(AVAILABLE_API_PARAMETERS, payload)
 end
 
@@ -202,6 +222,7 @@ function OpenAI:get_available_models(online)
   end
   return ids
 end
+
 function OpenAI:send_realtime_request(payload, callback)
   if not self:verify() then
     logger.error("API key verification failed")
