@@ -141,30 +141,30 @@ function Perplexity:process_onexit(res)
   end
 end
 
--- Returns the list of available models
----@return string[]
+-- Returns the list of available models with their parameters
+---@return table
 function Perplexity:get_available_models()
   local base_models = {
-    "llama-3.1-sonar-small-128k-online",
-    "llama-3.1-sonar-large-128k-online",
-    "llama-3.1-sonar-huge-128k-online",
-    "llama-3.1-sonar-small-128k-chat",
-    "llama-3.1-sonar-large-128k-chat",
-    "llama-3.1-8b-instruct",
-    "llama-3.1-70b-instruct"
+    ["llama-3.1-sonar-small-128k-online"] = { max_tokens = 128, temperature = 0.7, top_p = 0.9 },
+    ["llama-3.1-sonar-large-128k-online"] = { max_tokens = 256, temperature = 0.8, top_p = 0.9 },
+    ["llama-3.1-sonar-huge-128k-online"] = { max_tokens = 512, temperature = 0.9, top_p = 0.95 },
+    ["llama-3.1-sonar-small-128k-chat"] = { max_tokens = 128, temperature = 0.6, top_p = 0.85 },
+    ["llama-3.1-sonar-large-128k-chat"] = { max_tokens = 256, temperature = 0.7, top_p = 0.9 },
+    ["llama-3.1-8b-instruct"] = { max_tokens = 64, temperature = 0.5, top_p = 0.8 },
+    ["llama-3.1-70b-instruct"] = { max_tokens = 128, temperature = 0.6, top_p = 0.85 },
   }
 
   local is_pro = self:verify_pro_access()
   if is_pro then
     local pro_models = {
-      "gpt-4-omni",
-      "claude-3.5-sonnet",
-      "claude-3-opus",
-      "sonar-large-32k",
-      "pplx-default"
+      ["gpt-4-omni"] = { max_tokens = 256, temperature = 0.7, top_p = 0.9 },
+      ["claude-3.5-sonnet"] = { max_tokens = 128, temperature = 0.6, top_p = 0.85 },
+      ["claude-3-opus"] = { max_tokens = 512, temperature = 0.9, top_p = 0.95 },
+      ["sonar-large-32k"] = { max_tokens = 1024, temperature = 0.8, top_p = 0.9 },
+      ["pplx-default"] = { max_tokens = 128, temperature = 0.7, top_p = 0.9 },
     }
-    for _, model in ipairs(pro_models) do
-      table.insert(base_models, model)
+    for model, params in pairs(pro_models) do
+      base_models[model] = params
     end
     logger.info("Perplexity Pro models enabled")
   else
@@ -278,7 +278,7 @@ end
 -- Fixes to prevent repeated outputs and hallucinations
 ---@param response string
 function Perplexity:remove_repeated_text(response)
-  return response:gsub("%b<>", ""):gsub("\\b(\\w+)\\b%s*%1\\b", "%1")
+  return response:gsub("%b<>", ""):gsub("%f[%w](%w+)%f[%W]%s*%1", "%1")
 end
 
 return Perplexity
