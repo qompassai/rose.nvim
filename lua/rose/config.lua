@@ -81,7 +81,7 @@ local defaults = {
       "Sure! Here's a shortheadline summarizing the chat" or anything similar.
       ]],
             topic = {
-                model = "llama3.2:1b",
+                model = "smollm:135m",
                 params = { max_tokens = 32 },
             },
             params = {
