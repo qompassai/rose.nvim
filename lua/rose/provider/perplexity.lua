@@ -1,6 +1,7 @@
 local logger = require("rose.logger")
 local utils = require("rose.utils")
 local Job = require("plenary.job")
+local websocket = require("websocket.client")
 
 ---@class Perplexity
 ---@field endpoint string
@@ -52,6 +53,23 @@ function Perplexity:preprocess_payload(payload)
   for _, message in ipairs(payload.messages) do
     message.content = message.content:gsub("^%s*(.-)%s*$", "%1")
   end
+  -- Explicitly convert numeric parameters to ensure correct types
+  if payload.temperature then
+    payload.temperature = tonumber(payload.temperature)
+  end
+  if payload.max_tokens then
+    payload.max_tokens = tonumber(payload.max_tokens)
+  end
+  if payload.top_p then
+    payload.top_p = tonumber(payload.top_p)
+  end
+  if payload.presence_penalty then
+    payload.presence_penalty = tonumber(payload.presence_penalty)
+  end
+  if payload.frequency_penalty then
+    payload.frequency_penalty = tonumber(payload.frequency_penalty)
+  end
+
   return utils.filter_payload_parameters(AVAILABLE_API_PARAMETERS, payload)
 end
 
@@ -91,65 +109,63 @@ end
 ---@param response string
 ---@return string|nil
 function Perplexity:process_stdout(response)
-  if response:match("chat%.completion%.chunk") or response:match("chat%.completion") then
-    local success, content = pcall(vim.json.decode, response)
-    if
-      success
-      and content.choices
-      and content.choices[1]
-      and content.choices[1].delta
-      and content.choices[1].delta.content
-    then
-      return content.choices[1].delta.content
-    else
-      logger.debug("Could not process response: " .. response)
-    end
+  local success, content = pcall(vim.json.decode, response)
+  if
+    success
+    and content.choices
+    and content.choices[1]
+    and content.choices[1].message
+    and content.choices[1].message.content
+  then
+    return content.choices[1].message.content
+  else
+    logger.debug("Could not process response: " .. response)
   end
 end
 
 -- Processes the onexit event from the API response
 ---@param res string
 function Perplexity:process_onexit(res)
-  local parsed = res:match("<h1>(.-)</h1>")
-  if parsed then
-    logger.error("Perplexity - message: " .. parsed)
+  local success, parsed = pcall(vim.json.decode, res)
+  if success and parsed.error and parsed.error.message then
+    logger.error(
+      string.format(
+        "Perplexity - code: %s message: %s type: %s",
+        parsed.error.code or "N/A",
+        parsed.error.message,
+        parsed.error.type or "N/A"
+      )
+    )
+  elseif success and parsed.choices and parsed.choices[1] and parsed.choices[1].message then
+    return parsed.choices[1].message.content
   end
 end
 
 -- Returns the list of available models
 ---@return string[]
 function Perplexity:get_available_models()
-  -- Base models available to all users
   local base_models = {
-    -- Perplexity Sonar Online Models (128k context)
-    "llama-3.1-sonar-small-128k-online",    -- 8B parameters
-    "llama-3.1-sonar-large-128k-online",    -- 70B parameters
-    "llama-3.1-sonar-huge-128k-online",     -- 405B parameters
-    -- Perplexity Chat Models (128k context)
+    "llama-3.1-sonar-small-128k-online",
+    "llama-3.1-sonar-large-128k-online",
+    "llama-3.1-sonar-huge-128k-online",
     "llama-3.1-sonar-small-128k-chat",
     "llama-3.1-sonar-large-128k-chat",
-    -- Open Source Models (131k context)
     "llama-3.1-8b-instruct",
     "llama-3.1-70b-instruct"
   }
 
-  -- Check if user has Pro access
   local is_pro = self:verify_pro_access()
-  -- Add Pro models if user has access
   if is_pro then
     local pro_models = {
-      -- Pro Models (32k context)
-      "gpt-4-omni",                           -- OpenAI's latest
-      "claude-3.5-sonnet",                    -- Anthropic's fast model
-      "claude-3-opus",                        -- Anthropic's most capable
-      "sonar-large-32k",                      -- LlaMa 3.1 70B optimized
-      "pplx-default",                         -- Fast browsing optimized
-      -- Beta Access Models
-      "claude-3-sonnet-20240229",            -- Latest Sonnet version
-      "claude-3-opus-20240229",              -- Latest Opus version
-      "claude-3-haiku-20240307"              -- Fastest Claude version
+      "gpt-4-omni",
+      "claude-3.5-sonnet",
+      "claude-3-opus",
+      "sonar-large-32k",
+      "pplx-default",
+      "claude-3-sonnet-20240229",
+      "claude-3-opus-20240229",
+      "claude-3-haiku-20240307"
     }
-    -- Combine base and pro models
     for _, model in ipairs(pro_models) do
       table.insert(base_models, model)
     end
@@ -166,7 +182,6 @@ function Perplexity:verify_pro_access()
   if not self:verify() then
     return false
   end
-  -- Make API call to check subscription status
   local job = Job:new({
     command = "curl",
     args = {
@@ -189,4 +204,37 @@ function Perplexity:verify_pro_access()
   return job:result()
 end
 
+-- Sends a user query to the API for text generation
+---@param payload table
+---@param callback function
+function Perplexity:send_query(payload, callback)
+  if not self:verify() then
+    logger.error("API key verification failed")
+    return
+  end
+
+  payload = self:preprocess_payload(payload)
+  local job = Job:new({
+    command = "curl",
+    args = {
+      "-X", "POST",
+      self.endpoint,
+      "-H", "Authorization: Bearer " .. self.api_key,
+      "-H", "Content-Type: application/json",
+      "-d", vim.json.encode(payload)
+    },
+    on_exit = function(j)
+      local response = table.concat(j:result(), "\n")
+      local result = self:process_stdout(response)
+      if result then
+        callback(result)
+      else
+        logger.error("Failed to retrieve valid response")
+      end
+    end
+  })
+  job:start()
+end
+
 return Perplexity
+
