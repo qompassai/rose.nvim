@@ -31,6 +31,17 @@ local AVAILABLE_API_PARAMETERS = {
   frequency_penalty = true,
 }
 
+-- Allowed models for Perplexity API
+local ALLOWED_MODELS = {
+  "llama-3.1-sonar-small-128k-online",
+  "llama-3.1-sonar-large-128k-online",
+  "llama-3.1-sonar-huge-128k-online",
+  "llama-3.1-sonar-small-128k-chat",
+  "llama-3.1-sonar-large-128k-chat",
+  "llama-3.1-8b-instruct",
+  "llama-3.1-70b-instruct"
+}
+
 -- Creates a new Perplexity instance
 ---@param endpoint string
 ---@param api_key string|table
@@ -42,9 +53,6 @@ function Perplexity:new(endpoint, api_key)
     name = "pplx",
   }, self)
 end
-
--- Placeholder for setting model (not implemented)
-function Perplexity:set_model(_) end
 
 -- Preprocesses the payload before sending to the API
 ---@param payload table
@@ -70,6 +78,12 @@ function Perplexity:preprocess_payload(payload)
     payload.frequency_penalty = tonumber(payload.frequency_penalty)
   end
 
+  -- Ensure only Sonar models are used
+  if not vim.tbl_contains(ALLOWED_MODELS, payload.model) then
+    logger.error("Invalid model specified. Only Sonar models are supported by the API.")
+    return nil
+  end
+
   return utils.filter_payload_parameters(AVAILABLE_API_PARAMETERS, payload)
 end
 
@@ -77,9 +91,11 @@ end
 ---@return table
 function Perplexity:curl_params()
   return {
-    self.endpoint,
+    self.endpoint .. "/chat/completions",
     "-H",
-    "authorization: Bearer " .. self.api_key,
+    "Authorization: Bearer " .. self.api_key,
+    "-H",
+    "Content-Type: application/json",
   }
 end
 
@@ -123,76 +139,6 @@ function Perplexity:process_stdout(response)
   end
 end
 
--- Processes the onexit event from the API response
----@param res string
-function Perplexity:process_onexit(res)
-  local success, parsed = pcall(vim.json.decode, res)
-  if success and parsed.error and parsed.error.message then
-    logger.error(
-      string.format(
-        "Perplexity - code: %s message: %s type: %s",
-        parsed.error.code or "N/A",
-        parsed.error.message,
-        parsed.error.type or "N/A"
-      )
-    )
-  elseif success and parsed.choices and parsed.choices[1] and parsed.choices[1].message then
-    return parsed.choices[1].message.content
-  end
-end
-
--- Returns the list of available models
----@return string[]
-function Perplexity:get_available_models()
-  local base_models = {
-    "llama-3.1-sonar-small-128k-online",
-    "llama-3.1-sonar-large-128k-online",
-    "llama-3.1-sonar-huge-128k-online",
-    "llama-3.1-sonar-small-128k-chat",
-    "llama-3.1-sonar-large-128k-chat",
-    "llama-3.1-8b-instruct",
-    "llama-3.1-70b-instruct"
-  }
-local is_pro = false
---  local is_pro = self:verify_pro_access()
-  if is_pro then
---    table.insert(base_models, "GPT-4-o")
---    table.insert(base_models, "claude-3.5-sonnet")
---    table.insert(base_models, "claude-3-opus")
---    table.insert(base_models, "sonar-large-32k")
---    table.insert(base_models, "pplx-default")
-  end
-
-  return base_models
-end
-
--- Add function to verify Pro access
-function Perplexity:verify_pro_access()
-  if not self:verify() then
-    return false
-  end
-  local job = Job:new({
-    command = "curl",
-    args = {
-      "https://api.perplexity.ai/account/subscription",
-      "-H",
-      "Authorization: Bearer " .. self.api_key,
-    },
-    on_exit = function(j)
-      local response = utils.parse_raw_response(j:result())
-      if response then
-        local success, decoded = pcall(vim.json.decode, response)
-        if success and decoded and decoded.tier == "pro" then
-          return true
-        end
-      end
-      return false
-    end
-  })
-  job:sync()
-  return job:result()
-end
-
 -- Sends a user query to the API for text generation
 ---@param payload table
 ---@param callback function
@@ -202,14 +148,33 @@ function Perplexity:send_query(payload, callback)
     return
   end
 
+  -- Preprocess the payload as per API guidelines
   payload = self:preprocess_payload(payload)
+  if not payload then
+    return
+  end
+
+  -- Align payload with Perplexity API's message structure
+  if not payload.messages then
+    logger.error("Messages are required in the payload")
+    return
+  end
+
+  for i, message in ipairs(payload.messages) do
+    if not message.role then
+      if i == 1 then
+        message.role = "system" -- Assume the first message is a system message unless otherwise specified
+      else
+        message.role = "user" -- Default to "user" for the rest
+      end
+    end
+  end
+
   local job = Job:new({
     command = "curl",
     args = {
       "-X", "POST",
-      self.endpoint,
-      "-H", "Authorization: Bearer " .. self.api_key,
-      "-H", "Content-Type: application/json",
+      unpack(self:curl_params()),
       "-d", vim.json.encode(payload)
     },
     on_exit = function(j)
@@ -231,6 +196,12 @@ end
 function Perplexity:send_query_ws(payload, callback)
   if not self:verify() then
     logger.error("API key verification failed")
+    return
+  end
+
+  -- Ensure only Sonar models are used
+  if not vim.tbl_contains(ALLOWED_MODELS, payload.model) then
+    logger.error("Invalid model specified. Only Sonar models are supported by the API.")
     return
   end
 
@@ -274,4 +245,3 @@ function Perplexity:remove_repeated_text(response)
 end
 
 return Perplexity
-
