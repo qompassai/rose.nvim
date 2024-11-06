@@ -54,6 +54,16 @@ function Perplexity:new(endpoint, api_key)
   }, self)
 end
 
+-- Sets the model for the Perplexity instance
+---@param model string
+function Perplexity:set_model(model)
+  if vim.tbl_contains(ALLOWED_MODELS, model) then
+    self.model = model
+  else
+    logger.error("Invalid model specified. Only Sonar models are supported by the API.")
+  end
+end
+
 -- Preprocesses the payload before sending to the API
 ---@param payload table
 ---@return table
@@ -251,3 +261,4 @@ function Perplexity:remove_repeated_text(response)
 end
 
 return Perplexity
+
