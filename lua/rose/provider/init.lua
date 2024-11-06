@@ -7,7 +7,6 @@ local Ollama = require("rose.provider.ollama")
 local OpenAI = require("rose.provider.openai")
 local Perplexity = require("rose.provider.perplexity")
 local GitHub = require("rose.provider.github")
-local HuggingFace = require("rose.provider.hf")
 local xAI = require("rose.provider.xai")
 local logger = require("rose.logger")
 
@@ -23,7 +22,6 @@ M.init_provider = function(prov_name, endpoint, api_key)
     gemini = Gemini,
     github = GitHub,
     groq = Groq,
-    hf = HuggingFace,
     mistral = Mistral,
     nvidia = Nvidia,
     ollama = Ollama,
