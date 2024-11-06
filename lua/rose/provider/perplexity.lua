@@ -135,17 +135,19 @@ end
 ---@param response string
 ---@return string|nil
 function Perplexity:process_stdout(response)
-  local success, content = pcall(vim.json.decode, response)
-  if
-    success
-    and content.choices
-    and content.choices[1]
-    and content.choices[1].message
-    and content.choices[1].message.content
-  then
-    return content.choices[1].message.content
-  else
-    logger.debug("Could not process response: " .. response)
+  if response:match("chat%.completion%.chunk") or response:match("chat%.completion") then
+    local success, content = pcall(vim.json.decode, response)
+    if
+      success
+      and content.choices
+      and content.choices[1]
+      and content.choices[1].delta
+      and content.choices[1].delta.content
+    then
+      return content.choices[1].delta.content
+    else
+      logger.debug("Could not process response: " .. response)
+    end
   end
 end
 
@@ -179,6 +181,7 @@ function Perplexity:send_query(payload, callback)
 
   -- Preprocess the payload as per API guidelines
   payload = self:preprocess_payload(payload)
+  payload.stream = true
   if not payload then
     return
   end
