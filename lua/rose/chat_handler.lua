@@ -69,17 +69,19 @@ function ChatHandler:set_provider(selected_prov, is_chat)
 end
 
 function ChatHandler:get_provider(is_chat)
-  local current_prov = self.current_provider[is_chat and "chat" or "command"]
-  if not current_prov then
-    local prov = self.state:get_provider(is_chat)
-    if not prov then
-      logger.error(string.format("No provider found for %s", is_chat and "chat" or "command"))
-      return nil
+  if is_chat then
+    local chat_provider = self.file_state.current_provider and self.file_state.current_provider.chat or self._state.current_provider.chat
+    if not chat_provider then
+      logger.error("Chat provider not found.")
     end
-    self:set_provider(prov, is_chat)
-    current_prov = self.current_provider[is_chat and "chat" or "command"]
+    return chat_provider
+  else
+    local command_provider = self.file_state.current_provider and self.file_state.current_provider.command or self._state.current_provider.command
+    if not command_provider then
+      logger.error("Command provider not found.")
+    end
+    return command_provider
   end
-  return current_prov
 end
 
 --- Retrieves the current provider for chat or command.
@@ -231,11 +233,17 @@ end
 ---@return table { name, system_prompt, provider }
 function ChatHandler:get_model(model_type)
   local prov = self:get_provider(model_type == "chat")
-  if not prov then
-    logger.error("Provider not available for model type: " .. model_type)
+  if not prov or not prov.name then
+    logger.error("Provider not available or invalid for model type: " .. model_type)
     return {}
   end
+
   local model = self.state:get_model(prov.name, model_type)
+  if not model then
+    logger.error("Model not available for provider: " .. prov.name)
+    return {}
+  end
+
   local system_prompt = self.options.system_prompt[model_type] or ""
   return {
     name = model,
@@ -247,21 +255,28 @@ end
 -- creates prompt commands for each target
 function ChatHandler:prepare_commands()
   for name, target in pairs(ui.Target) do
-    -- uppercase first letter
+    -- Uppercase first letter
     local command = name:gsub("^%l", string.upper)
 
     local model_obj = self:get_model("command")
-    -- popup is like ephemeral one off chat
+    if next(model_obj) == nil then
+      logger.error("No valid model found for command target: " .. command)
+      return -- or continue if you want to move on to the next target
+    end
+
+    -- Popup is like ephemeral one off chat
     if target == ui.Target.popup then
       model_obj = self:get_model("chat")
+      if next(model_obj) == nil then
+        logger.error("No valid model found for chat target: " .. command)
+        return -- or continue
+      end
     end
 
     local cmd = function(params)
-      -- template is chosen dynamically based on mode in which the command is called
       local template = self.options.template_command
       if params.range == 2 then
         template = self.options.template_selection
-        -- rewrite needs custom template
         if target == ui.Target.rewrite then
           template = self.options.template_rewrite
         end
@@ -272,12 +287,15 @@ function ChatHandler:prepare_commands()
           template = self.options.template_prepend
         end
       end
+
       local cmd_prefix = utils.template_render_from_list(
         self.options.command_prompt_prefix_template,
-        { ["{{llm}}"] = self:get_model("command").name }
+        { ["{{llm}}"] = model_obj.name or "default_model_name" }
       )
+
       self:prompt(params, target, model_obj, cmd_prefix, utils.trim(template), true)
     end
+
     self.commands[command] = command
     self:addCommand(command, function(params)
       cmd(params)
