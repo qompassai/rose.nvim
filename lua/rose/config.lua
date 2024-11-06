@@ -350,15 +350,27 @@ function M.setup(opts)
     M.hooks = M.options.hooks
     M.options.hooks = nil
 
-    -- resolve symlinks
-    local chat_dir_stat = vim.uv.fs_lstat(M.options.chat_dir)
-    if chat_dir_stat and chat_dir_stat.type == "link" then
-        M.options.chat_dir = vim.fn.resolve(M.options.chat_dir)
+-- resolve symlinks using vim.loop
+local chat_dir_stat = vim.loop.fs_lstat(M.options.chat_dir)
+if chat_dir_stat and chat_dir_stat.type == "link" then
+    local resolved_chat_dir = vim.loop.fs_realpath(M.options.chat_dir)
+    if resolved_chat_dir then
+        M.options.chat_dir = resolved_chat_dir
+    else
+        vim.api.nvim_err_writeln("Error: Failed to resolve symlink for chat_dir: " .. M.options.chat_dir)
     end
-    local state_dir_stat = vim.uv.fs_lstat(M.options.state_dir)
-    if state_dir_stat and state_dir_stat.type == "link" then
-        M.options.state_dir = vim.fn.resolve(M.options.state_dir)
+end
+
+local state_dir_stat = vim.loop.fs_lstat(M.options.state_dir)
+if state_dir_stat and state_dir_stat.type == "link" then
+    local resolved_state_dir = vim.loop.fs_realpath(M.options.state_dir)
+    if resolved_state_dir then
+        M.options.state_dir = resolved_state_dir
+    else
+        vim.api.nvim_err_writeln("Error: Failed to resolve symlink for state_dir: " .. M.options.state_dir)
     end
+end
+
 
     -- Create directories for all config entries ending with "_dir"
     for k, v in pairs(M.options) do
@@ -425,7 +437,7 @@ M.register_hooks = function(hooks, options)
     for hook, _ in pairs(hooks) do
         vim.api.nvim_create_user_command(options.cmd_prefix .. hook, function(params)
             M.call_hook(hook, params)
-        end, { nargs = "?", range = true, desc = "Rose" })
+        end, { nargs = "?", range = true, desc = "Rose LLM plugin" })
     end
 end
 
@@ -452,7 +464,7 @@ M.add_default_commands = function(commands, hooks, options)
             end, {
                 nargs = "?",
                 range = true,
-                desc = "Rose: " .. cmd,
+                desc = "Rose LLM plugin: " .. cmd,
                 complete = function()
                     if completions[cmd] then
                         return completions[cmd]
