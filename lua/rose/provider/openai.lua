@@ -147,7 +147,7 @@ end
 ---@param online boolean Whether to fetch models online
 ---@return string[]
 function OpenAI:get_available_models(online)
-  local base_models = {
+  local ids = {
     "gpt-4o",
     "gpt-4-turbo",
     "gpt-4-turbo-2024-04-09",
@@ -177,44 +177,31 @@ function OpenAI:get_available_models(online)
     "gpt-4o-audio-preview-2024-10-01"
   }
   if online and self:verify() then
-    local success, result = pcall(function()
-      local job = Job:new({
-        command = "curl",
-        args = {
-          "https://api.openai.com/v1/models",
-          "-H",
-          "Authorization: Bearer " .. self.api_key,
-          "-H",
-          "Content-Type: application/json",
-        },
-        on_exit = function(j)
-          local response = utils.parse_raw_response(j:result())
-          if type(response) == "string" then
-            local decode_success, decoded = pcall(vim.json.decode, response)
-            if decode_success and decoded and decoded.data then
-              local online_models = {}
-              for _, item in ipairs(decoded.data) do
-                table.insert(online_models, item.id)
-              end
-              return online_models
-            end
+    local job = Job:new({
+      command = "curl",
+      args = {
+        "https://api.openai.com/v1/models",
+        "-H",
+        "Authorization: Bearer " .. self.api_key,
+      },
+      on_exit = function(job)
+        local parsed_response = utils.parse_raw_response(job:result())
+        self:process_onexit(parsed_response)
+        ids = {}
+        local success, decoded = pcall(vim.json.decode, parsed_response)
+        if success and decoded.data then
+          for _, item in ipairs(decoded.data) do
+            table.insert(ids, item.id)
           end
-          return nil
-        end,
-      })
-      job:sync()
-      return job:result()
-    end)
-
-    if success and result then
-      return result
-    else
-      logger.warn("Failed to fetch online models, falling back to local list")
-    end
+        end
+        return ids
+      end,
+    })
+    job:start()
+    job:wait()
   end
-  return base_models
+  return ids
 end
-
 function OpenAI:send_realtime_request(payload, callback)
   if not self:verify() then
     logger.error("API key verification failed")
