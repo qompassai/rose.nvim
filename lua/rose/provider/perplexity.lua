@@ -26,7 +26,7 @@ local AVAILABLE_API_PARAMETERS = {
   return_related_questions = true,
   search_recency_filter = true,
   top_k = true,
-  stream = false,
+  stream = true,
   presence_penalty = true,
   frequency_penalty = true,
 }
