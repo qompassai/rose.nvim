@@ -183,7 +183,7 @@ local defaults = {
     chat_user_prefix = "🗨:",
     llm_prefix = "🧭:",
     chat_confirm_delete = true,
-    online_model_selection = false,
+    online_model_selection = true,
     chat_shortcut_respond = { modes = { "n", "i", "v", "x" }, shortcut = "<C-g><C-g>" },
     chat_shortcut_delete = { modes = { "n", "i", "v", "x" }, shortcut = "<C-g>d" },
     chat_shortcut_stop = { modes = { "n", "i", "v", "x" }, shortcut = "<C-g>s" },
@@ -425,7 +425,7 @@ M.register_hooks = function(hooks, options)
     for hook, _ in pairs(hooks) do
         vim.api.nvim_create_user_command(options.cmd_prefix .. hook, function(params)
             M.call_hook(hook, params)
-        end, { nargs = "?", range = true, desc = "Qompass Rose" })
+        end, { nargs = "?", range = true, desc = "Rose" })
     end
 end
 
@@ -452,7 +452,7 @@ M.add_default_commands = function(commands, hooks, options)
             end, {
                 nargs = "?",
                 range = true,
-                desc = "Qompass Rose: " .. cmd,
+                desc = "Rose: " .. cmd,
                 complete = function()
                     if completions[cmd] then
                         return completions[cmd]
