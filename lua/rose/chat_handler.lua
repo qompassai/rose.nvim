@@ -86,7 +86,7 @@ end
 ---@param is_chat boolean True for chat provider, false for command provider.
 ---@return table | nil Provider table or nil if not found.
 function ChatHandler:buf_handler()
-  local gid = utils.create_augroup("PrtBufHandler", { clear = true })
+  local gid = utils.create_augroup("RoseBufHandler", { clear = true })
 
   utils.autocmd({ "BufEnter" }, nil, function(event)
     local buf = event.buf
@@ -853,7 +853,7 @@ function ChatHandler:_chat_respond(params)
         local line = vim.api.nvim_buf_line_count(buf)
         utils.cursor_to_line(line, buf, win)
       end
-      vim.cmd("doautocmd User PrtDone")
+      vim.cmd("doautocmd User RoseDone")
     end)
   )
 end
@@ -1382,7 +1382,7 @@ function ChatHandler:prompt(params, target, model_obj, prompt, template, reset_h
       buf = vim.api.nvim_create_buf(true, true)
       vim.api.nvim_set_current_buf(buf)
 
-      local group = utils.create_augroup("PrtScratchSave" .. utils.uuid(), { clear = true })
+      local group = utils.create_augroup("RoseScratchSave" .. utils.uuid(), { clear = true })
       vim.api.nvim_create_autocmd({ "BufWritePre" }, {
         buffer = buf,
         group = group,
@@ -1417,7 +1417,7 @@ function ChatHandler:prompt(params, target, model_obj, prompt, template, reset_h
           spinner:stop()
         end
         on_exit(qid)
-        vim.cmd("doautocmd User PrtDone")
+        vim.cmd("doautocmd User RoseDone")
       end)
     )
   end
