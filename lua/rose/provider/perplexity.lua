@@ -149,6 +149,25 @@ function Perplexity:process_stdout(response)
   end
 end
 
+-- Processes the onexit event from the API response
+---@param response string
+---@return string|nil
+function Perplexity:process_onexit(response)
+  local success, parsed = pcall(vim.json.decode, response)
+  if success and parsed.error and parsed.error.message then
+    logger.error(
+      string.format(
+        "Perplexity - code: %s message: %s type: %s",
+        parsed.error.code or "N/A",
+        parsed.error.message,
+        parsed.error.type or "N/A"
+      )
+    )
+  elseif success and parsed.choices and parsed.choices[1] and parsed.choices[1].message then
+    return parsed.choices[1].message.content
+  end
+end
+
 -- Sends a user query to the API for text generation
 ---@param payload table
 ---@param callback function
@@ -189,7 +208,7 @@ function Perplexity:send_query(payload, callback)
     },
     on_exit = function(j)
       local response = table.concat(j:result(), "\n")
-      local result = self:process_stdout(response)
+      local result = self:process_onexit(response)
       if result then
         callback(result)
       else
