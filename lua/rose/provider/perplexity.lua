@@ -17,7 +17,7 @@ local AVAILABLE_API_PARAMETERS = {
   model = true,
   messages = true,
   -- optional
-  max_tokens = true,
+  max_tokens = false,
   temperature = true,
   top_p = true,
   return_citations = true,
@@ -26,7 +26,7 @@ local AVAILABLE_API_PARAMETERS = {
   return_related_questions = true,
   search_recency_filter = true,
   top_k = true,
-  stream = true,
+  stream = false,
   presence_penalty = true,
   frequency_penalty = true,
 }
