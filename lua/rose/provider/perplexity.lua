@@ -238,6 +238,12 @@ function Perplexity:send_query_ws(payload, callback)
   })
 end
 
+-- Returns the list of available models
+---@return string[]
+function Perplexity:get_available_models()
+  return ALLOWED_MODELS
+end
+
 -- Fixes to prevent repeated outputs and hallucinations
 ---@param response string
 function Perplexity:remove_repeated_text(response)
