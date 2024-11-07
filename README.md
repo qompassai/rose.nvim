@@ -1,129 +1,91 @@
 # rose.nvim
 
-## A Qompass tool for quality public-source AI
+## Your quality AI menu
 
-## Requires
+# Requires
 
-- [Ollama](https://ollama.ai/) with an appropriate model, e.g. [`llama3.1`](https://ollama.com/library/llama3.1), [`mistral`](https://ollama.ai/library/mistral), etc.
+- [Qompass Diver](https://github.com/qompassai/Diver)
+- [ollama](https://ollama.com/) with [smollm:135m](https://ollama.com/library/smollm:135m) and [`llama3.1:1b`](https://ollama.com/library/llama3.1), at minimum.
 - [Curl](https://curl.se/)
 
-## Install
+# Optional
+- Perplexity, Groq, OpenAI, Mistral, Anthropic, and X.AI API keys for use of these providers.
 
-Install with your favorite plugin manager, e.g. [lazy.nvim](https://github.com/folke/lazy.nvim)
+# How to stay updated
 
-Example with Lazy
+To get updates once this on your computer, you have two options:
 
-```lua
--- Minimal configuration
-{ "qompassai/rose.nvim" },
+1. [**Using HTTPS (Most Common)**](#using-https-most-common)
+2. [**Using SSH (Advanced)**](#using-ssh-advanced)
 
+- **Either** option requires[git](#how-to-install-git) to be installed:
+
+### Using HTTPS (Most Common)
+
+This option is best if:
+
+    * You’re new to GitHub
+    * You like to keep things simple.
+    * You haven't set up SSH/GPG keys for Github.
+    * You don't have the Github CLI
+
+- MacOS | Linux | Microsoft WSL
+
+```bash
+git clone --depth 1 https://github.com/qompassai/Equator.git
+git remote add upstream https://github.com/qompassai/Equator.git
+git fetch upstream
+git checkout main
+git merge upstream/main
 ```
 
-```lua
+Note: You only need to run the clone command **once**. After that, go to [3. Getting Updates](#getting-updates) to keep your local repository up-to-date.
 
--- Custom Parameters (with defaults)
-{
-    "qompassai/rose.nvim",
-    opts = {
-        model = "llama3.2:3b", -- The default model to use.
-        quit_map = "q", -- set keymap to close the response window
-        retry_map = "<c-r>", -- set keymap to re-send the current prompt
-        accept_map = "<c-cr>", -- set keymap to replace the previous selection with the last result
-        host = "localhost", -- The host running the Ollama service.
-        port = "11434", -- The port on which the Ollama service is listening.
-        display_mode = "float", -- The display mode. Can be "float" or "split" or "horizontal-split".
-        show_prompt = false, -- Shows the prompt submitted to Ollama.
-        show_model = false, -- Displays which model you are using at the beginning of your chat session.
-        no_auto_close = false, -- Never closes the window automatically.
-        file = false, -- Write the payload to a temporary file to keep the command short.
-        hidden = false, -- Hide the generation window (if true, will implicitly set `prompt.replace = true`), requires Neovim >= 0.10
-        init = function(options) pcall(io.popen, "ollama serve > /dev/null 2>&1 &") end,
-        -- Function to initialize Ollama
-        command = function(options)
-            local body = {model = options.model, stream = true}
-            return "curl --silent --no-buffer -X POST http://" .. options.host .. ":" .. options.port .. "/api/chat -d $body"
-        end,
-        -- The command for the Ollama service. You can use placeholders $prompt, $model and $body (shellescaped).
-        -- This can also be a command string.
-        -- The executed command must return a JSON object with { response, context }
-        -- (context property is optional).
-        -- list_models = '<omitted lua function>', -- Retrieves a list of model names
-        debug = false -- Prints errors and the command which is run.
-    }
-},
+2. **Using SSH(Advanced)**:
+
+-  MacOS | Linux | Microsoft WSL **with** [GitHub CLI (gh)](https://github.com/cli/cli#installation)
+
+```bash
+gh repo clone qompassai/Equator
+git remote add upstream https://github.com/qompassai/Equator.git
+git fetch upstream
+git checkout main
+git merge upstream/main
 ```
 
-Here are all [available models](https://ollama.ai/library).
+This option is best if you:
 
-Alternatively, you can call the `setup` function:
+    * are not new to Github
+    * You want to add a new technical skill
+    * You're comfortable with the terminal/CLI, or want to be
+    * You have SSH/GPG set up
+    * You're
 
-```lua
-require('rose').setup({
-  -- same as above
-})
+Note: You only need to run the clone command **once**. After that, go to [3. Getting Updates](#getting-updates) to keep your local repository up-to-date.
+
+3. Getting updates
+
+- **After** cloning locally, use the following snippet below to get the latest updates:
+
+- MacOS | Linux | Microsoft WSL
+
+- Option 1:
+**This will **overwrite** any local changes you've made**
+
+```bash
+git fetch upstream
+git checkout main
+git merge upstream/main
 ```
 
-## Usage
+-Option 2:
+**To keep your local changes and still get the updates**
 
-Use command `Rose` to generate text based on predefined and customizable prompts.
-
-Example key maps:
-
-```lua
-vim.keymap.set({ 'n', 'v' }, '<leader>]', ':Rose<CR>')
+```bash
+git stash
+git fetch upstream
+git checkout main
+git merge upstream/main
+git stash pop
 ```
 
-You can also directly invoke it with one of the [predefined prompts](./lua/gen/prompts.lua) or your custom prompts:
-
-```lua
-vim.keymap.set('v', '<leader>]', ':Rose Enhance_Grammar_Spelling<CR>')
-```
-
-Once a conversation is started, the whole context is sent to the LLM. That allows you to ask follow-up questions with
-
-```lua
-:Rose Chat
-```
-
-and once the window is closed, you start with a fresh conversation.
-
-For prompts which don't automatically replace the previously selected text (`replace = false`), you can replace the selected text with the generated output with `<c-cr>`.
-
-You can select a model from a list of all installed models with
-
-```lua
-require('rose').select_model()
-```
-
-## Custom Prompts
-
-[All prompts](./lua/rose/prompts.lua) are defined in `require('rose').prompts`, you can enhance or modify them.
-
-Example:
-
-````lua
-require('rose').prompts['Elaborate_Text'] = {
-  prompt = "Elaborate the following text:\n$text",
-  replace = true
-}
-require('rose').prompts['Fix_Code'] = {
-  prompt = "Fix the following code. Only output the result in format ```$filetype\n...\n```:\n```$filetype\n$text\n```",
-  replace = true,
-  extract = "```$filetype\n(.-)```"
-}
-````
-
-You can use the following properties per prompt:
-
-- `prompt`: (string | function) Prompt either as a string or a function which should return a string. The result can use the following placeholders:
-  - `$text`: Visually selected text or the content of the current buffer
-  - `$filetype`: File type of the buffer (e.g. `javascript`)
-  - `$input`: Additional user input
-  - `$register`: Value of the unnamed register (yanked text)
-- `replace`: `true` if the selected text shall be replaced with the generated output
-- `extract`: Regular expression used to extract the generated result
-- `model`: The model to use, e.g. `zephyr`, default: `mistral`
-
-## Tip
-
-User selections can be delegated to [Telescope](https://github.com/nvim-telescope/telescope.nvim) with [telescope-ui-select](https://github.com/nvim-telescope/telescope-ui-select.nvim).
