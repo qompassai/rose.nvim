@@ -9,9 +9,9 @@ timer:start(
   500,
   0,
   vim.schedule_wrap(function()
-    local prt = require("rose")
-    if not prt.did_setup then
-      prt.setup()
+    local rose = require("rose")
+    if not rose.did_setup then
+      rose.setup()
     end
   end)
 )
