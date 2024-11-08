@@ -7,9 +7,16 @@
 - [Qompass Diver](https://github.com/qompassai/Diver)
 - [ollama](https://ollama.com/) with [smollm:135m](https://ollama.com/library/smollm:135m) and [`llama3.1:1b`](https://ollama.com/library/llama3.1), at minimum.
 - [Curl](https://curl.se/)
+- [CMake](https://cmake.org)
 
 # Optional
-- Perplexity, Groq, OpenAI, Mistral, Anthropic, and X.AI API keys for use of these providers.
+- Perplexity API Key
+- Groq API Key
+- OpenAI Key
+- Mistral API Key
+- Anthropic API Key
+- X.AI API key
+- NVIDIA API Key
 
 # How to stay updated
 
