@@ -16,7 +16,7 @@ local AVAILABLE_API_PARAMETERS = {
   model = "llama3-8b-8192", -- Required parameter: ID of the model to use. Make sure to provide a valid model ID.
   messages = true,
   -- optional
-  frequency_penalty = 1, --Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
+  frequency_penalty = true, --Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
   logit_bias = true, -- This is not yet supported by any of our models. Modify the likelihood of specified tokens appearing in the completion.
   logprobs = true, --This is not yet supported by any LPU powered models. Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.
   max_tokens = 8192, -- The maximum number of tokens that can be generated in the chat completion. The total length of input tokens and generated tokens is limited by the model's context length.

@@ -130,16 +130,13 @@ local defaults = {
           chat = {
             max_tokens = 64,
             temperature = 1,
-            frequency_penalty = 1,
-            presence_penalty = 1,
-            n = 1,
-            stop = { "END", "###" },
-            response_format = {
-              type = "json_object",
-            },
           },
         },
-        command = { temperature = 1, top_p = 1 },
+        command = {
+          temperature = 1,
+          top_p = 1,
+          max_tokens = 4096,
+        },
       },
     },
     github = {
