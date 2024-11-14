@@ -1,7 +1,7 @@
 local logger = require("rose.logger")
 local utils = require("rose.utils")
 local Job = require("plenary.job")
-local websocket = require("websocket.client")
+local websocket = require("resty.websocket.client")
 
 ---@class OpenAI
 ---@field endpoint string
