@@ -61,34 +61,13 @@ function OpenAI:preprocess_payload(payload)
     if payload.messages[1] and payload.messages[1].role == "system" then
       table.remove(payload.messages, 1)
     end
-    payload.stream = nil
     payload.logprobs = nil
-    payload.temperature = tonumber(1)
-    payload.top_p = tonumber(1)
-    payload.top_n = tonumber(1)
-    payload.presence_penalty = tonumber(0)
-    payload.frequency_penalty = tonumber(0)
+    payload.temperature = 1
+    payload.top_p = 1
+    payload.top_n = 1
+    payload.presence_penalty = 0
+    payload.frequency_penalty = 0
   end
-  -- Explicitly convert other numeric parameters to ensure they are numbers
-  if payload.temperature then
-    payload.temperature = tonumber(payload.temperature)
-  end
-  if payload.max_tokens then
-    payload.max_tokens = tonumber(payload.max_tokens)
-  end
-  if payload.max_completion_tokens then
-    payload.max_completion_tokens = tonumber(payload.max_completion_tokens)
-  end
-  if payload.top_p then
-    payload.top_p = tonumber(payload.top_p)
-  end
-  if payload.presence_penalty then
-    payload.presence_penalty = tonumber(payload.presence_penalty)
-  end
-  if payload.frequency_penalty then
-    payload.frequency_penalty = tonumber(payload.frequency_penalty)
-  end
-
   return utils.filter_payload_parameters(AVAILABLE_API_PARAMETERS, payload)
 end
 
@@ -152,9 +131,9 @@ function OpenAI:process_onexit(res)
     logger.error(
       string.format(
         "OpenAI - code: %s message: %s type: %s",
-        parsed.error.code or "N/A",
+        parsed.error.code,
         parsed.error.message,
-        parsed.error.type or "N/A"
+        parsed.error.type
       )
     )
   elseif success and parsed.choices and parsed.choices[1] and parsed.choices[1].message then
@@ -190,10 +169,6 @@ function OpenAI:get_available_models(online)
     "gpt-4",
     "o1-mini-2024-09-12",
     "gpt-3.5-turbo-instruct-0914",
-    "gpt-4o-realtime-preview",
-    "gpt-4o-realtime-preview-2024-10-01",
-    "gpt-4o-audio-preview",
-    "gpt-4o-audio-preview-2024-10-01"
   }
   if online and self:verify() then
     local job = Job:new({
@@ -222,47 +197,4 @@ function OpenAI:get_available_models(online)
   return ids
 end
 
-function OpenAI:send_realtime_request(payload, callback)
-  if not self:verify() then
-    logger.error("API key verification failed")
-    return
-  end
-
-  local ws_url = "wss://api.openai.com/v1/realtime"
-
-  local client = websocket()
-
-  client:on_open(function()
-    local message = vim.json.encode(payload)
-    client:send(message)
-  end)
-
-  client:on_message(function(_, message)
-    local success, parsed_message = pcall(vim.json.decode, message)
-    if success then
-      if parsed_message.choices and parsed_message.choices[1] then
-        callback(parsed_message.choices[1].delta and parsed_message.choices[1].delta.content or parsed_message.choices[1].message.content)
-      end
-    else
-      logger.error("Failed to parse WebSocket message: " .. message)
-    end
-  end)
-
-  client:on_error(function(_, err)
-    logger.error("WebSocket error: " .. err)
-  end)
-
-  client:on_close(function(_, code, reason)
-    logger.info(string.format("WebSocket closed - Code: %s, Reason: %s", code, reason))
-  end)
-
-  client:connect(ws_url, nil, {
-    headers = {
-      ["Authorization"] = "Bearer " .. self.api_key,
-      ["Content-Type"] = "application/json",
-    }
-  })
-end
-
 return OpenAI
-

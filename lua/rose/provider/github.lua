@@ -76,9 +76,8 @@ function GitHub:get_available_models(online)
     "gpt-4o",
     "gpt-4o-mini",
     "o1-preview",
-    "o1-mini"
+    "o1-mini",
   }
 end
 
 return GitHub
-

@@ -1,5 +1,6 @@
 local Anthropic = require("rose.provider.anthropic")
 local Gemini = require("rose.provider.gemini")
+local Huggingface = require("roce.provider.hf")
 local Groq = require("rose.provider.groq")
 local Mistral = require("rose.provider.mistral")
 local Nvidia = require("rose.provider.nvidia")
@@ -22,6 +23,7 @@ M.init_provider = function(prov_name, endpoint, api_key)
     gemini = Gemini,
     github = GitHub,
     groq = Groq,
+    hf = Huggingface,
     mistral = Mistral,
     nvidia = Nvidia,
     ollama = Ollama,
@@ -46,7 +48,6 @@ M.init_provider = function(prov_name, endpoint, api_key)
     vim.ui.input({ prompt = "Enter API key for " .. prov_name .. ": " }, function(input)
       if input then
         vim.fn.setenv(prov_name:upper() .. "_API_KEY", input)
-        -- Now that we have the API key, initialize the provider
         return ProviderClass:new(endpoint, input)
       else
         logger.error("API key is required for provider " .. prov_name)
@@ -54,8 +55,6 @@ M.init_provider = function(prov_name, endpoint, api_key)
     end)
     return {}
   end
-
-  -- If API key is passed directly, initialize the provider
   return ProviderClass:new(endpoint, api_key)
 end
 
