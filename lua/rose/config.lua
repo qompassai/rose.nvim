@@ -190,10 +190,10 @@ local defaults = {
   llm_prefix = "🧭:",
   chat_confirm_delete = true,
   online_model_selection = true,
-  chat_shortcut_respond = { modes = { "n", "i", "v", "x" }, shortcut = "<C-g><C-g>" },
-  chat_shortcut_delete = { modes = { "n", "i", "v", "x" }, shortcut = "<C-g>d" },
-  chat_shortcut_stop = { modes = { "n", "i", "v", "x" }, shortcut = "<C-g>s" },
-  chat_shortcut_new = { modes = { "n", "i", "v", "x" }, shortcut = "<C-g>c" },
+  chat_shortcut_respond = { modes = { "n", "i", "v", "x" }, shortcut = "<C-r><C-r>" },
+  chat_shortcut_delete = { modes = { "n", "i", "v", "x" }, shortcut = "<C-r>d" },
+  chat_shortcut_stop = { modes = { "n", "i", "v", "x" }, shortcut = "<C-r>s" },
+  chat_shortcut_new = { modes = { "n", "i", "v", "x" }, shortcut = "<C-r>c" },
   chat_free_cursor = false,
   chat_prompt_buf_type = false,
   toggle_target = "vsplit",
@@ -204,7 +204,7 @@ local defaults = {
   style_popup_margin_right = 2,
   style_popup_margin_top = 2,
   style_popup_max_width = 160,
-  command_prompt_prefix_template = "🤖 {{llm}} ~ ",
+  command_prompt_prefix_template = "🌹 {{llm}} ~ ",
   command_auto_select_response = false,
   fzf_lua_opts = {
     ["--ansi"] = true,
@@ -320,7 +320,7 @@ local defaults = {
       ]]
       local model_obj = rose.get_model("command")
       rose.logger.info("Asking model: " .. model_obj.name)
-      rose.Prompt(params, rose.ui.Target.popup, model_obj, "🤖 Ask ~ ", template)
+      rose.Prompt(params, rose.ui.Target.popup, model_obj, "🌹 Ask ~ ", template)
     end,
   },
 }
@@ -338,7 +338,6 @@ M.options = nil
 M.providers = nil
 M.hooks = nil
 local map = vim.keymap.set
-local keymap_opts = { noremap = true, silent = true }
 function M.setup(opts)
   if vim.fn.has("nvim-0.10") == 0 then
     return vim.notify("rose.nvim requires Neovim >= 0.10", vim.log.levels.ERROR)
@@ -350,55 +349,49 @@ function M.setup(opts)
   if not utils.has_valid_key(opts.providers, valid_provider_names) then
     return vim.notify("Invalid provider configuration", vim.log.levels.ERROR)
   end
-
   M.options = vim.tbl_deep_extend("force", {}, defaults, opts or {})
-  map("n", "<C-g>c", ":RoseChatNew<CR>", vim.tbl_extend("force", opts, { desc = "[r]ose [c]hat" }))
+
+  map("n", "<C-r>c", ":RoseChatNew<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Chat" }))
 
   -- Rose Toggle Popup Chat
-  map("n", "<C-g>t", ":RoseChatToggle<CR>", vim.tbl_extend("force", opts, { desc = "[r] Toggle Popup Chat" }))
+  map("n", "<C-r>t", ":RoseChatToggle<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Toggle Popup Chat" }))
 
   -- Rose Chat Finder
-  map("n", "<C-g>f", ":RoseChatFinder<CR>", vim.tbl_extend("force", opts, { desc = "Rose Chat Finder" }))
+  map("n", "<C-r>f", ":RoseChatFinder<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Chat Finder" }))
 
   -- Rose Trigger the API to generate a response
-  map("n", "<C-g><C-g>", ":RoseChatRespond<CR>", opts)
+  map("n", "<C-r><C-r>", ":RoseChatRespond<CR>", opts)
 
   -- Rose Stop the current text generation
-  map("n", "<C-g>s", ":RoseStop<CR>", opts)
+  map("n", "<C-r>s", ":RoseStop<CR>", opts)
 
   -- Rose Delete the current chat file
-  map("n", "<C-g>d", ":RoseChatDelete<CR>", opts)
+  map("n", "<C-r>d", ":RoseChatDelete<CR>", opts)
 
   -- Rose Select Provider
-  map("n", "<C-g>p", "<cmd>RoseProvider<CR>", vim.tbl_extend("force", opts, { desc = "Rose Select provider" }))
+  map("n", "<C-r>p", "<cmd>RoseProvider<CR>", vim.tbl_extend("force", opts, { desc = "🧭Rose Select provider" }))
 
   -- Rose Switch Model
-  map("n", "<C-g>m", ":RoseModel<CR>", vim.tbl_extend("force", opts, { desc = "Rose Switch model" }))
+  map("n", "<C-r>m", ":RoseModel<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Switch model" }))
 
   -- Rose Print plugin config
-  map("n", "<C-g>i", ":RoseInfo<CR>", vim.tbl_extend("force", opts, { desc = "Rose Print plugin config" }))
+  map("n", "<C-r>i", ":RoseInfo<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Print plugin config" }))
 
   -- Rose Edit local context file
-  map("n", "<C-g>e", ":RoseContext<CR>", vim.tbl_extend("force", opts, { desc = "Rose Edit local context file" }))
+  map("n", "<C-r>e", ":RoseContext<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Edit local context file" }))
 
   -- Rose Rewrites the visual selection
-  map("v", "<C-g>r", ":RoseRewrite<CR>", vim.tbl_extend("force", opts, { desc = "Rose Rewrite selection" }))
+  map("v", "<C-r>r", ":RoseRewrite<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Rewrite selection" }))
 
   -- Rose Append text to selection
-  map("v", "<C-g>a", ":RoseAppend<CR>", vim.tbl_extend("force", opts, { desc = "Rose Append to selection" }))
+  map("v", "<C-r>a", ":RoseAppend<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Add to selection" }))
 
   -- Rose Prepend text to selection
-  vim.keymap.set(
-    "v",
-    "<C-g>p",
-    ":RosePrepend<CR>",
-    vim.tbl_extend("force", opts, { desc = "Rose Prepend to selection" })
-  )
+  map("v", "<C-r>p", ":RosePrepend<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Prepend to selection" }))
 
   -- Rose Repeat last action
-  map("n", "<C-g>r", ":RoseRetry<CR>", vim.tbl_extend("force", opts, { desc = "Rose Repeat last action" }))
+  map("n", "<C-r>r", ":RoseRetry<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Repeat last action" }))
 
-  -- Continue with other plugin setup (e.g., configuring providers, models, etc.)
   M.providers = M.merge_providers(defaults.providers, opts.providers)
   M.providers = M.merge_providers(defaults.providers, opts.providers)
   M.options.providers = nil
@@ -468,71 +461,70 @@ function M.setup(opts)
   M.chat_handler:buf_handler()
 
   M.loaded = true
-end
 
-M.Prompt = function(params, target, provider, model_obj, prompt, template)
-  M.chat_handler:prompt(params, target, provider, model_obj, prompt, template)
-end
-
-M.ChatNew = function(params, chat_prompt)
-  M.chat_handler:chat_new(params, chat_prompt)
-end
-
-M.get_model = function(model_type)
-  return M.chat_handler:get_model(model_type)
-end
-
-M.get_status_info = function()
-  return M.chat_handler:get_status_info()
-end
-
-M.register_hooks = function(hooks, options)
-  -- register user commands
-  for hook, _ in pairs(hooks) do
-    vim.api.nvim_create_user_command(options.cmd_prefix .. hook, function(params)
-      M.call_hook(hook, params)
-    end, { nargs = "?", range = true, desc = "Rose LLM plugin" })
+  M.Prompt = function(params, target, provider, model_obj, prompt, template)
+    M.chat_handler:prompt(params, target, provider, model_obj, prompt, template)
   end
-end
 
--- hook caller
-M.call_hook = function(name, params)
-  if M.hooks[name] ~= nil then
-    return M.hooks[name](M, params)
+  M.ChatNew = function(params, chat_prompt)
+    M.chat_handler:chat_new(params, chat_prompt)
   end
-  M.logger.error("The hook '" .. name .. "' does not exist.")
-end
 
-M.add_default_commands = function(commands, hooks, options)
-  local completions = {
-    ChatNew = { "popup", "split", "vsplit", "tabnew" },
-    ChatPaste = { "popup", "split", "vsplit", "tabnew" },
-    ChatToggle = { "popup", "split", "vsplit", "tabnew" },
-    Context = { "popup", "split", "vsplit", "tabnew" },
-  }
-  -- register default commands
-  for cmd, cmd_func in pairs(commands) do
-    if hooks[cmd] == nil then
-      vim.api.nvim_create_user_command(options.cmd_prefix .. cmd, function(params)
-        M.chat_handler[cmd_func](M.chat_handler, params)
-      end, {
-        nargs = "?",
-        range = true,
-        desc = "Rose LLM plugin: " .. cmd,
-        complete = function()
-          if completions[cmd] then
-            return completions[cmd]
-          end
-          if cmd == "Model" then
-            return M.available_models[M.chat_handler.state:get_provider()]
-          elseif cmd == "Provider" then
-            return M.available_providers
-          end
-          return {}
-        end,
-      })
+  M.get_model = function(model_type)
+    return M.chat_handler:get_model(model_type)
+  end
+
+  M.get_status_info = function()
+    return M.chat_handler:get_status_info()
+  end
+
+  M.register_hooks = function(hooks, options)
+    -- register user commands
+    for hook, _ in pairs(hooks) do
+      vim.api.nvim_create_user_command(options.cmd_prefix .. hook, function(params)
+        M.call_hook(hook, params)
+      end, { nargs = "?", range = true, desc = "Rose LLM plugin" })
+    end
+  end
+
+  -- hook caller
+  M.call_hook = function(name, params)
+    if M.hooks[name] ~= nil then
+      return M.hooks[name](M, params)
+    end
+    M.logger.error("The hook '" .. name .. "' does not exist.")
+  end
+
+  M.add_default_commands = function(commands, hooks, options)
+    local completions = {
+      ChatNew = { "popup", "split", "vsplit", "tabnew" },
+      ChatPaste = { "popup", "split", "vsplit", "tabnew" },
+      ChatToggle = { "popup", "split", "vsplit", "tabnew" },
+      Context = { "popup", "split", "vsplit", "tabnew" },
+    }
+    -- register default commands
+    for cmd, cmd_func in pairs(commands) do
+      if hooks[cmd] == nil then
+        vim.api.nvim_create_user_command(options.cmd_prefix .. cmd, function(params)
+          M.chat_handler[cmd_func](M.chat_handler, params)
+        end, {
+          nargs = "?",
+          range = true,
+          desc = "Rose LLM plugin: " .. cmd,
+          complete = function()
+            if completions[cmd] then
+              return completions[cmd]
+            end
+            if cmd == "Model" then
+              return M.available_models[M.chat_handler.state:get_provider()]
+            elseif cmd == "Provider" then
+              return M.available_providers
+            end
+            return {}
+          end,
+        })
+      end
     end
   end
 end
-
 return M

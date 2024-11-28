@@ -12,10 +12,10 @@ local logger = require("rose.logger")
 
 local M = {}
 
----@param prov_name string # name of the provider
----@param endpoint string # API endpoint for the provider
----@param api_key string|table # API key or routine for authentication
----@return table # returns initialized provider
+---@param prov_name string
+---@param endpoint string
+---@param api_key string|table
+---@return table
 M.init_provider = function(prov_name, endpoint, api_key)
   local providers = {
     anthropic = Anthropic,
@@ -35,6 +35,27 @@ M.init_provider = function(prov_name, endpoint, api_key)
     logger.error("Unknown provider " .. prov_name)
     return {}
   end
+
+  -- For Ollama, we don't need an API key, so skip the API key prompt
+  if prov_name == "ollama" then
+    return ProviderClass:new(endpoint, {}) -- Pass an empty table for the API key
+  end
+
+  -- Check if API key is provided for other providers
+  if not api_key or (type(api_key) == "table" and #api_key == 0) then
+    vim.ui.input({ prompt = "Enter API key for " .. prov_name .. ": " }, function(input)
+      if input then
+        vim.fn.setenv(prov_name:upper() .. "_API_KEY", input)
+        -- Now that we have the API key, initialize the provider
+        return ProviderClass:new(endpoint, input)
+      else
+        logger.error("API key is required for provider " .. prov_name)
+      end
+    end)
+    return {}
+  end
+
+  -- If API key is passed directly, initialize the provider
   return ProviderClass:new(endpoint, api_key)
 end
 
