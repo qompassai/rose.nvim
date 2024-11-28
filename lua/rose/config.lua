@@ -190,10 +190,10 @@ local defaults = {
   llm_prefix = "🧭:",
   chat_confirm_delete = true,
   online_model_selection = true,
-  chat_shortcut_respond = { modes = { "n", "i", "v", "x" }, shortcut = "<C-a><C-a>" },
-  chat_shortcut_delete = { modes = { "n", "i", "v", "x" }, shortcut = "<C-a>d" },
-  chat_shortcut_stop = { modes = { "n", "i", "v", "x" }, shortcut = "<C-a>s" },
-  chat_shortcut_new = { modes = { "n", "i", "v", "x" }, shortcut = "<C-a>c" },
+  chat_shortcut_respond = { modes = { "n", "i", "v", "x" }, shortcut = "<C-g><C-g>" },
+  chat_shortcut_delete = { modes = { "n", "i", "v", "x" }, shortcut = "<C-g>d" },
+  chat_shortcut_stop = { modes = { "n", "i", "v", "x" }, shortcut = "<C-g>s" },
+  chat_shortcut_new = { modes = { "n", "i", "v", "x" }, shortcut = "<C-g>c" },
   chat_free_cursor = false,
   chat_prompt_buf_type = false,
   toggle_target = "vsplit",
@@ -357,46 +357,46 @@ function M.setup(opts)
   end
 
   M.options = vim.tbl_deep_extend("force", {}, defaults, opts or {})
-  map("n", "<C-a>c", ":RoseChatNew<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Chat" }))
+  map("n", "<C-g>c", ":RoseChatNew<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Chat" }))
 
   -- Rose Toggle Popup Chat
-  map("n", "<C-a>t", ":RoseChatToggle<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Toggle Popup Chat" }))
+  map("n", "<C-g>t", ":RoseChatToggle<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Toggle Popup Chat" }))
 
   -- Rose Chat Finder
-  map("n", "<C-a>f", ":RoseChatFinder<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Chat Finder" }))
+  map("n", "<C-g>f", ":RoseChatFinder<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Chat Finder" }))
 
   -- Rose Trigger the API to generate a response
-  map("n", "<C-a><C-a>", ":RoseChatRespond<CR>", opts)
+  map("n", "<C-g><C-g>", ":RoseChatRespond<CR>", opts)
 
   -- Rose Stop the current text generation
-  map("n", "<C-a>s", ":RoseStop<CR>", opts)
+  map("n", "<C-g>s", ":RoseStop<CR>", opts)
 
   -- Rose Delete the current chat file
-  map("n", "<C-a>d", ":RoseChatDelete<CR>", opts)
+  map("n", "<C-g>d", ":RoseChatDelete<CR>", opts)
 
   -- Rose Select Provider
-  map("n", "<C-a>p", "<cmd>RoseProvider<CR>", vim.tbl_extend("force", opts, { desc = "🧭Rose Select provider" }))
+  map("n", "<C-g>p", "<cmd>RoseProvider<CR>", vim.tbl_extend("force", opts, { desc = "🧭Rose Select provider" }))
 
   -- Rose Switch Model
-  map("n", "<C-a>m", ":RoseModel<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Switch model" }))
+  map("n", "<C-g>m", ":RoseModel<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Switch model" }))
 
   -- Rose Print plugin config
-  map("n", "<C-a>i", ":RoseInfo<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Print plugin config" }))
+  map("n", "<C-g>i", ":RoseInfo<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Print plugin config" }))
 
   -- Rose Edit local context file
-  map("n", "<C-a>e", ":RoseContext<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Edit local context file" }))
+  map("n", "<C-g>e", ":RoseContext<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Edit local context file" }))
 
   -- Rose Rewrites the visual selection
-  map("v", "<C-a>r", ":RoseRewrite<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Rewrite selection" }))
+  map("v", "<C-g>r", ":RoseRewrite<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Rewrite selection" }))
 
   -- Rose Append text to selection
-  map("v", "<C-a>a", ":RoseAppend<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Add to selection" }))
+  map("v", "<C-g>a", ":RoseAppend<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Add to selection" }))
 
   -- Rose Prepend text to selection
-  map("v", "<C-a>p", ":RosePrepend<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Prepend to selection" }))
+  map("v", "<C-g>p", ":RosePrepend<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Prepend to selection" }))
 
   -- Rose Repeat last action
-  map("n", "<C-a>r", ":RoseRetry<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Repeat last action" }))
+  map("n", "<C-g>r", ":RoseRetry<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Repeat last action" }))
 
   M.providers = M.merge_providers(defaults.providers, opts.providers)
   M.providers = M.merge_providers(defaults.providers, opts.providers)
