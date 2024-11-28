@@ -346,11 +346,17 @@ function M.setup(opts)
   math.randomseed(os.time())
 
   local valid_provider_names = vim.tbl_keys(defaults.providers)
+
+  if not opts or not opts.providers then
+    vim.notify("Invalid provider configuration: opts.providers is missing", vim.log.levels.ERROR)
+    return
+  end
+
   if not utils.has_valid_key(opts.providers, valid_provider_names) then
     return vim.notify("Invalid provider configuration", vim.log.levels.ERROR)
   end
-  M.options = vim.tbl_deep_extend("force", {}, defaults, opts or {})
 
+  M.options = vim.tbl_deep_extend("force", {}, defaults, opts or {})
   map("n", "<C-r>c", ":RoseChatNew<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Chat" }))
 
   -- Rose Toggle Popup Chat
@@ -398,25 +404,35 @@ function M.setup(opts)
   M.hooks = M.options.hooks
   M.options.hooks = nil
 
-  -- resolve symlinks using vim.loop
-  local chat_dir_stat = vim.loop.fs_lstat(M.options.chat_dir)
-  if chat_dir_stat and chat_dir_stat.type == "link" then
-    local resolved_chat_dir = vim.loop.fs_realpath(M.options.chat_dir)
-    if resolved_chat_dir then
-      M.options.chat_dir = resolved_chat_dir
-    else
-      vim.api.nvim_err_writeln("Error: Failed to resolve symlink for chat_dir: " .. M.options.chat_dir)
+  -- Helper function to resolve symlink using readlink or realpath
+  local function resolve_symlink(path)
+    -- Use readlink or realpath to get the actual file path
+    local handle = io.popen("readlink -f " .. path .. " 2>/dev/null || realpath " .. path .. " 2>/dev/null")
+    if handle then
+      local result = handle:read("*a")
+      handle:close()
+      if result then
+        return result:gsub("%s+$", "")
+      end
     end
+    return nil
   end
 
-  local state_dir_stat = vim.loop.fs_lstat(M.options.state_dir)
-  if state_dir_stat and state_dir_stat.type == "link" then
-    local resolved_state_dir = vim.loop.fs_realpath(M.options.state_dir)
-    if resolved_state_dir then
-      M.options.state_dir = resolved_state_dir
-    else
-      vim.api.nvim_err_writeln("Error: Failed to resolve symlink for state_dir: " .. M.options.state_dir)
-    end
+  local chat_dir = M.options.chat_dir
+  local state_dir = M.options.state_dir
+
+  local resolved_chat_dir = resolve_symlink(chat_dir)
+  if resolved_chat_dir then
+    M.options.chat_dir = resolved_chat_dir
+  else
+    vim.api.nvim_err_writeln("Error: Failed to resolve symlink for chat_dir: " .. chat_dir)
+  end
+
+  local resolved_state_dir = resolve_symlink(state_dir)
+  if resolved_state_dir then
+    M.options.state_dir = resolved_state_dir
+  else
+    vim.api.nvim_err_writeln("Error: Failed to resolve symlink for state_dir: " .. state_dir)
   end
 
   -- Create directories for all config entries ending with "_dir"
