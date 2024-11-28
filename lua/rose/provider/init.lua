@@ -1,6 +1,6 @@
 local Anthropic = require("rose.provider.anthropic")
 local Gemini = require("rose.provider.gemini")
-local Huggingface = require("roce.provider.hf")
+local Huggingface = require("rose.provider.hf")
 local Groq = require("rose.provider.groq")
 local Mistral = require("rose.provider.mistral")
 local Nvidia = require("rose.provider.nvidia")
