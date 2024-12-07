@@ -356,7 +356,6 @@ function M.setup(opts)
     return vim.notify("Invalid provider configuration", vim.log.levels.ERROR)
   end
 
-  M.options = vim.tbl_deep_extend("force", {}, defaults, opts or {})
   map("n", "<C-g>c", function()
     require("rose").chat_new()
   end, { desc = "🧭 Rose Chat" })
