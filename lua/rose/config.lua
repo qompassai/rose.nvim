@@ -357,10 +357,14 @@ function M.setup(opts)
   end
 
   M.options = vim.tbl_deep_extend("force", {}, defaults, opts or {})
-  map("n", "<C-g>c", ":RoseChatNew<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Chat" }))
+  map("n", "<C-g>c", function()
+    require("rose").chat_new()
+  end, { desc = "🧭 Rose Chat" })
 
   -- Rose Toggle Popup Chat
-  map("n", "<C-g>t", ":RoseChatToggle<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Toggle Popup Chat" }))
+  map("n", "<C-g>t", function()
+    require("rose").chat_toggle()
+  end, { desc = "🧭 Rose Toggle Popup Chat" })
 
   -- Rose Chat Finder
   map("n", "<C-g>f", ":RoseChatFinder<CR>", vim.tbl_extend("force", opts, { desc = "🧭 Rose Chat Finder" }))
