@@ -141,8 +141,8 @@ local defaults = {
         params = {},
       },
       params = {
-        chat = { temperature = 1.5, top_p = 1 },
-        command = { temperature = 1.5, top_p = 1 },
+        chat = { temperature = 0.7, top_p = 1 },
+        command = { temperature = 0.7, top_p = 1 },
       },
     },
     nvidia = {
