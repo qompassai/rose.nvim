@@ -1,7 +1,9 @@
 local utils = require("rose.utils")
 local ChatHandler = require("rose.chat_handler")
 local init_provider = require("rose.provider").init_provider
-
+-- Define <leader> globally
+vim.g.mapleader = " " -- Space as the leader key
+vim.g.maplocalleader = "," -- Optional local leader key
 local M = {
   ui = require("rose.ui"),
   logger = require("rose.logger"),
