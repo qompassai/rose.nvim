@@ -1,6 +1,5 @@
 local Anthropic = require("rose.provider.anthropic")
 local Gemini = require("rose.provider.gemini")
-local Huggingface = require("rose.provider.hf")
 local Groq = require("rose.provider.groq")
 local Mistral = require("rose.provider.mistral")
 local Nvidia = require("rose.provider.nvidia")
@@ -23,7 +22,6 @@ M.init_provider = function(prov_name, endpoint, api_key)
     gemini = Gemini,
     github = GitHub,
     groq = Groq,
-    hf = Huggingface,
     mistral = Mistral,
     nvidia = Nvidia,
     ollama = Ollama,
