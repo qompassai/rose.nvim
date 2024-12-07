@@ -7,8 +7,9 @@ local M = {
   logger = require("rose.logger"),
 }
 local system_chat_prompt = [[
-Act as versatile AI assistant with MD/PhD level expertise in any topic that the user asks for.
-When engaging with users, please adhere to the following guidelines to ensure
+You are a versatile AI assistant with capabilities
+extending to general knowledge and coding support. When engaging
+with users, please adhere to the following guidelines to ensure
 the highest quality of interaction:
 
 - Admit when unsure by saying 'I don't know.'
@@ -21,11 +22,10 @@ the highest quality of interaction:
 ]]
 
 local system_command_prompt = [[
-You are an AI specializing in teaching learners in medicine and technology.
-- When asked a coding question focus your response on helping with technical expertise.
-- When asked a medical question focus your response on providing deliberate clinical advising
-at lhe level of a MD/PhD.
-- When asked a coding question, limit your reply to being solely focused on the code snippet in question.
+You are an AI specializing in software development
+tasks, including code editing, completion, and debugging. Your
+responses should strictly pertain to the code provided. Please ensure
+that your reply is solely focused on the code snippet in question.
 ]]
 
 local topic_prompt = [[
@@ -57,8 +57,8 @@ local defaults = {
         params = { max_completion_tokens = 64 },
       },
       params = {
-        chat = { temperature = 1, top_p = 1 },
-        command = { temperature = 1, top_p = 1 },
+        chat = { temperature = 1.1, top_p = 1 },
+        command = { temperature = 1.1, top_p = 1 },
       },
     },
     gemini = {
@@ -82,7 +82,7 @@ local defaults = {
       "Sure! Here's a shortheadline summarizing the chat" or anything similar.
       ]],
       topic = {
-        model = "smollm2:135m",
+        model = "mistral:latest",
         params = { max_tokens = 32 },
       },
       params = {
@@ -116,8 +116,8 @@ local defaults = {
         params = {},
       },
       params = {
-        chat = { temperature = 0.85, top_p = 1 },
-        command = { temperature = 0.85, top_p = 1 },
+        chat = { temperature = 1.5, top_p = 1 },
+        command = { temperature = 1.5, top_p = 1 },
       },
     },
     groq = {
@@ -126,16 +126,11 @@ local defaults = {
       topic_prompt = topic_prompt,
       topic = {
         model = "llama-3.1-8b-instant",
-        params = {
-          chat = {
-            max_tokens = 4096,
-            temperature = 1,
-          },
-        },
+        params = {},
       },
       params = {
-        chat = { temperature = 1, top_p = 1 },
-        command = { temperature = 1, top_p = 1 },
+        chat = { temperature = 1.5, top_p = 1 },
+        command = { temperature = 1.5, top_p = 1 },
       },
     },
     github = {
@@ -147,8 +142,8 @@ local defaults = {
         params = {},
       },
       params = {
-        chat = { temperature = 0.8, top_p = 1 },
-        command = { temperature = 0.8, top_p = 1 },
+        chat = { temperature = 1.5, top_p = 1 },
+        command = { temperature = 1.5, top_p = 1 },
       },
     },
     nvidia = {
@@ -160,8 +155,8 @@ local defaults = {
         params = { max_tokens = 64 },
       },
       params = {
-        chat = { temperature = 0.85, top_p = 1 },
-        command = { temperature = 0.85, top_p = 1 },
+        chat = { temperature = 1.1, top_p = 1 },
+        command = { temperature = 1.1, top_p = 1 },
       },
     },
     xai = {
@@ -187,9 +182,9 @@ local defaults = {
   state_dir = vim.fn.stdpath("data") .. "/rose/persisted",
   chat_dir = vim.fn.stdpath("data") .. "/rose/chats",
   chat_user_prefix = "🗨:",
-  llm_prefix = "🧭:",
+  llm_prefix = "🦜:",
   chat_confirm_delete = true,
-  online_model_selection = true,
+  online_model_selection = false,
   chat_shortcut_respond = { modes = { "n", "i", "v", "x" }, shortcut = "<C-g><C-g>" },
   chat_shortcut_delete = { modes = { "n", "i", "v", "x" }, shortcut = "<C-g>d" },
   chat_shortcut_stop = { modes = { "n", "i", "v", "x" }, shortcut = "<C-g>s" },
@@ -204,8 +199,8 @@ local defaults = {
   style_popup_margin_right = 2,
   style_popup_margin_top = 2,
   style_popup_max_width = 160,
-  command_prompt_prefix_template = "🌹 {{llm}} ~ ",
-  command_auto_select_response = false,
+  command_prompt_prefix_template = "🤖 {{llm}} ~ ",
+  command_auto_select_response = true,
   fzf_lua_opts = {
     ["--ansi"] = true,
     ["--sort"] = "",
@@ -292,7 +287,7 @@ local defaults = {
       local status = string.format("%s (%s)", provider.name, status_info.model)
       rose.logger.info(string.format("Current provider: %s", status))
     end,
-    -- RoseRewrite regenerates the selected text based on comments in it
+    -- RoseImplement rewrites the provided selection/range based on comments in it
     Implement = function(rose, params)
       local template = [[
       Consider the following content from {{filename}}:
@@ -320,7 +315,7 @@ local defaults = {
       ]]
       local model_obj = rose.get_model("command")
       rose.logger.info("Asking model: " .. model_obj.name)
-      rose.Prompt(params, rose.ui.Target.popup, model_obj, "🌹 Ask ~ ", template)
+      rose.Prompt(params, rose.ui.Target.popup, model_obj, "🤖 Ask ~ ", template)
     end,
   },
 }
@@ -337,7 +332,7 @@ M.loaded = false
 M.options = nil
 M.providers = nil
 M.hooks = nil
-local map = vim.keymap.set
+
 function M.setup(opts)
   if vim.fn.has("nvim-0.10") == 0 then
     return vim.notify("rose.nvim requires Neovim >= 0.10", vim.log.levels.ERROR)
@@ -346,107 +341,24 @@ function M.setup(opts)
   math.randomseed(os.time())
 
   local valid_provider_names = vim.tbl_keys(defaults.providers)
-
-  if not opts or not opts.providers then
-    vim.notify("Invalid provider configuration: opts.providers is missing", vim.log.levels.ERROR)
-    return
-  end
-
   if not utils.has_valid_key(opts.providers, valid_provider_names) then
     return vim.notify("Invalid provider configuration", vim.log.levels.ERROR)
   end
 
-  map("n", "<C-g>c", function()
-    require("rose").chat_new()
-  end, { desc = "🧭 Rose Chat" })
-
-  map("n", "<C-g>t", function()
-    require("rose").chat_toggle()
-  end, { desc = "🧭 Rose Toggle Popup Chat" })
-
-  map("n", "<C-g>f", function()
-    require("rose").chat_finder()
-  end, { desc = "🧭 Rose Chat Finder" })
-
-  map("n", "<C-g><C-g>", function()
-    require("rose").chat_respond()
-  end, { desc = "🧭 Rose Trigger API Response" })
-
-  map("n", "<C-g>s", function()
-    require("rose").stop()
-  end, { desc = "🧭 Rose Stop Text Generation" })
-
-  map("n", "<C-g>d", function()
-    require("rose").chat_delete()
-  end, { desc = "🧭 Rose Delete Current Chat" })
-
-  map("n", "<C-g>p", function()
-    require("rose").provider()
-  end, { desc = "🧭 Rose Select Provider" })
-
-  map("n", "<C-g>m", function()
-    require("rose").model()
-  end, { desc = "🧭 Rose Switch Model" })
-
-  map("n", "<C-g>i", function()
-    require("rose").info()
-  end, { desc = "🧭 Rose Print Plugin Config" })
-
-  map("n", "<C-g>e", function()
-    require("rose").context()
-  end, { desc = "🧭 Rose Edit Local Context" })
-
-  map("v", "<C-g>r", function()
-    require("rose").rewrite()
-  end, { desc = "🧭 Rose Rewrite Selection" })
-
-  map("v", "<C-g>a", function()
-    require("rose").append()
-  end, { desc = "🧭 Rose Add to Selection" })
-
-  map("v", "<C-g>p", function()
-    require("rose").prepend()
-  end, { desc = "🧭 Rose Prepend to Selection" })
-
-  map("n", "<C-g>r", function()
-    require("rose").retry()
-  end, { desc = "🧭 Rose Repeat Last Action" })
-
-  M.providers = M.merge_providers(defaults.providers, opts.providers)
+  M.options = vim.tbl_deep_extend("force", {}, defaults, opts or {})
   M.providers = M.merge_providers(defaults.providers, opts.providers)
   M.options.providers = nil
   M.hooks = M.options.hooks
   M.options.hooks = nil
 
-  -- Helper function to resolve symlink using readlink or realpath
-  local function resolve_symlink(path)
-    -- Use readlink or realpath to get the actual file path
-    local handle = io.popen("readlink -f " .. path .. " 2>/dev/null || realpath " .. path .. " 2>/dev/null")
-    if handle then
-      local result = handle:read("*a")
-      handle:close()
-      if result then
-        return result:gsub("%s+$", "")
-      end
-    end
-    return nil
+  -- resolve symlinks
+  local chat_dir_stat = vim.uv.fs_lstat(M.options.chat_dir)
+  if chat_dir_stat and chat_dir_stat.type == "link" then
+    M.options.chat_dir = vim.fn.resolve(M.options.chat_dir)
   end
-
-  local chat_dir = M.options.chat_dir
-  local state_dir = M.options.state_dir
-
-  local resolved_chat_dir = resolve_symlink(chat_dir)
-  if resolved_chat_dir then
-    M.options.chat_dir = resolved_chat_dir
-  else
-    vim.api.nvim_err_writeln("Error: Failed to resolve symlink for chat_dir: " .. chat_dir)
-  end
-
-  local resolved_state_dir = resolve_symlink(state_dir)
-  if resolved_state_dir then
-    M.options.state_dir = resolved_state_dir
-  else
-    vim.api.nvim_err_writeln("Error: Failed to resolve symlink for state_dir: " .. state_dir)
+  local state_dir_stat = vim.uv.fs_lstat(M.options.state_dir)
+  if state_dir_stat and state_dir_stat.type == "link" then
+    M.options.state_dir = vim.fn.resolve(M.options.state_dir)
   end
 
   -- Create directories for all config entries ending with "_dir"
@@ -491,70 +403,71 @@ function M.setup(opts)
   M.chat_handler:buf_handler()
 
   M.loaded = true
+end
 
-  M.Prompt = function(params, target, provider, model_obj, prompt, template)
-    M.chat_handler:prompt(params, target, provider, model_obj, prompt, template)
+M.Prompt = function(params, target, model_obj, prompt, template)
+  M.chat_handler:prompt(params, target, model_obj, prompt, template)
+end
+
+M.ChatNew = function(params, chat_prompt)
+  M.chat_handler:chat_new(params, chat_prompt)
+end
+
+M.get_model = function(model_type)
+  return M.chat_handler:get_model(model_type)
+end
+
+M.get_status_info = function()
+  return M.chat_handler:get_status_info()
+end
+
+M.register_hooks = function(hooks, options)
+  -- register user commands
+  for hook, _ in pairs(hooks) do
+    vim.api.nvim_create_user_command(options.cmd_prefix .. hook, function(params)
+      M.call_hook(hook, params)
+    end, { nargs = "?", range = true, desc = "Rose LLM plugin" })
   end
+end
 
-  M.ChatNew = function(params, chat_prompt)
-    M.chat_handler:chat_new(params, chat_prompt)
+-- hook caller
+M.call_hook = function(name, params)
+  if M.hooks[name] ~= nil then
+    return M.hooks[name](M, params)
   end
+  M.logger.error("The hook '" .. name .. "' does not exist.")
+end
 
-  M.get_model = function(model_type)
-    return M.chat_handler:get_model(model_type)
-  end
-
-  M.get_status_info = function()
-    return M.chat_handler:get_status_info()
-  end
-
-  M.register_hooks = function(hooks, options)
-    -- register user commands
-    for hook, _ in pairs(hooks) do
-      vim.api.nvim_create_user_command(options.cmd_prefix .. hook, function(params)
-        M.call_hook(hook, params)
-      end, { nargs = "?", range = true, desc = "Rose LLM plugin" })
-    end
-  end
-
-  -- hook caller
-  M.call_hook = function(name, params)
-    if M.hooks[name] ~= nil then
-      return M.hooks[name](M, params)
-    end
-    M.logger.error("The hook '" .. name .. "' does not exist.")
-  end
-
-  M.add_default_commands = function(commands, hooks, options)
-    local completions = {
-      ChatNew = { "popup", "split", "vsplit", "tabnew" },
-      ChatPaste = { "popup", "split", "vsplit", "tabnew" },
-      ChatToggle = { "popup", "split", "vsplit", "tabnew" },
-      Context = { "popup", "split", "vsplit", "tabnew" },
-    }
-    -- register default commands
-    for cmd, cmd_func in pairs(commands) do
-      if hooks[cmd] == nil then
-        vim.api.nvim_create_user_command(options.cmd_prefix .. cmd, function(params)
-          M.chat_handler[cmd_func](M.chat_handler, params)
-        end, {
-          nargs = "?",
-          range = true,
-          desc = "Rose LLM plugin: " .. cmd,
-          complete = function()
-            if completions[cmd] then
-              return completions[cmd]
-            end
-            if cmd == "Model" then
-              return M.available_models[M.chat_handler.state:get_provider()]
-            elseif cmd == "Provider" then
-              return M.available_providers
-            end
-            return {}
-          end,
-        })
-      end
+M.add_default_commands = function(commands, hooks, options)
+  local completions = {
+    ChatNew = { "popup", "split", "vsplit", "tabnew" },
+    ChatPaste = { "popup", "split", "vsplit", "tabnew" },
+    ChatToggle = { "popup", "split", "vsplit", "tabnew" },
+    Context = { "popup", "split", "vsplit", "tabnew" },
+  }
+  -- register default commands
+  for cmd, cmd_func in pairs(commands) do
+    if hooks[cmd] == nil then
+      vim.api.nvim_create_user_command(options.cmd_prefix .. cmd, function(params)
+        M.chat_handler[cmd_func](M.chat_handler, params)
+      end, {
+        nargs = "?",
+        range = true,
+        desc = "Rose LLM plugin: " .. cmd,
+        complete = function()
+          if completions[cmd] then
+            return completions[cmd]
+          end
+          if cmd == "Model" then
+            return M.available_models[M.chat_handler.state:get_provider()]
+          elseif cmd == "Provider" then
+            return M.available_providers
+          end
+          return {}
+        end,
+      })
     end
   end
 end
+
 return M
