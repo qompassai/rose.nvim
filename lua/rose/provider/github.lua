@@ -16,7 +16,9 @@ local AVAILABLE_API_PARAMETERS = {
   stop = true,
   best_of = true,
   presence_penalty = true,
+  frequency_penalty = true,
   stream = true,
+  logprobs = true,
 }
 
 function GitHub:new(endpoint, api_key)
