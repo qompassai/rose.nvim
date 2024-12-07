@@ -1,9 +1,6 @@
 local utils = require("rose.utils")
 local ChatHandler = require("rose.chat_handler")
 local init_provider = require("rose.provider").init_provider
--- Define <leader> globally
-vim.g.mapleader = " " -- Space as the leader key
-vim.g.maplocalleader = "," -- Optional local leader key
 local M = {
   ui = require("rose.ui"),
   logger = require("rose.logger"),
@@ -84,7 +81,7 @@ local defaults = {
       "Sure! Here's a shortheadline summarizing the chat" or anything similar.
       ]],
       topic = {
-        model = "mistral:latest",
+        model = "smollm2:135m",
         params = { max_tokens = 32 },
       },
       params = {
@@ -184,13 +181,15 @@ local defaults = {
   state_dir = vim.fn.stdpath("data") .. "/rose/persisted",
   chat_dir = vim.fn.stdpath("data") .. "/rose/chats",
   chat_user_prefix = "🗨:",
-  llm_prefix = "🦜:",
+  llm_prefix = "🌹:",
   chat_confirm_delete = true,
   online_model_selection = true,
-  chat_shortcut_respond = { modes = { "n", "i", "v", "x" }, shortcut = "<leader>ar" },
-  chat_shortcut_delete = { modes = { "n", "i", "v", "x" }, shortcut = "<leader>ad" },
-  chat_shortcut_stop = { modes = { "n", "i", "v", "x" }, shortcut = "<leader>as" },
-  chat_shortcut_new = { modes = { "n", "i", "v", "x" }, shortcut = "<leader>ac" },
+  keys = {
+    chat_shortcut_respond = { modes = { "n", "i", "v", "x" }, shortcut = "<leader>ar" },
+    chat_shortcut_delete = { modes = { "n", "i", "v", "x" }, shortcut = "<leader>ad" },
+    chat_shortcut_stop = { modes = { "n", "i", "v", "x" }, shortcut = "<leader>as" },
+    chat_shortcut_new = { modes = { "n", "i", "v", "x" }, shortcut = "<leader>ac" },
+  },
   chat_free_cursor = false,
   chat_prompt_buf_type = false,
   toggle_target = "vsplit",
