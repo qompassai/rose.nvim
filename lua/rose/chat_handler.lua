@@ -636,7 +636,7 @@ function ChatHandler:_chat_respond(params)
   local model_name = model_obj.name
 
   if not self.pool:unique_for_buffer(buf) then
-    logger.warning("Hold on! This document is already being edited by another rose process.")
+    logger.warning("Another rose process is already running for this buffer.")
     return
   end
 
@@ -1134,7 +1134,7 @@ function ChatHandler:prompt(params, target, model_obj, prompt, template, reset_h
   local win = vim.api.nvim_get_current_win()
 
   if not self.pool:unique_for_buffer(buf) then
-    logger.warning("Hold on! This document is already being edited by another rose process..")
+    logger.warning("Another rose process is already running for this buffer.")
     return
   end
 
