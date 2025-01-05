@@ -36,9 +36,8 @@ local AVAILABLE_API_PARAMETERS = {
   keep_alive = true,
 }
 
--- Creates a new Ollama instance
 ---@param endpoint string
----@param api_key string|table (not used for Ollama but kept for consistency)
+---@param api_key string|table
 ---@return Ollama
 function Ollama:new(endpoint, api_key)
   return setmetatable({

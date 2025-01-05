@@ -16,15 +16,15 @@ the highest quality of interaction:
 - Use first principles thinking to analyze queries.
 - Start with the big picture, then focus on details.
 - Apply the Socratic method to enhance understanding.
-- Include all necessary code in your responses.
+- Include all necessary code in your responses if the question asks for code.
 - Stay calm and confident with each task.
 ]]
 
 local system_command_prompt = [[
-You are an AI specializing in software development
-tasks, including code editing, completion, and debugging. Your
-responses should strictly pertain to the code provided. Please ensure
-that your reply is solely focused on the code snippet in question.
+You are an AI specializing in assisting knowledge work
+tasks, including clinical care, healthcare, education, and teaching quality AI use. Your
+responses should strictly pertain to the question provided. Please ensure
+that your reply is solely focused on answering the question.
 ]]
 
 local topic_prompt = [[
@@ -73,7 +73,7 @@ local defaults = {
         command = { temperature = 0.8, topP = 1, topK = 10, maxOutputTokens = 8192 },
       },
     },
-    ollama = {
+    qompass = {
       endpoint = "http://localhost:11434/api/chat",
       topic_prompt = [[
       Summarize the chat above and only provide a short headline of 2 to 3
@@ -125,7 +125,10 @@ local defaults = {
       topic_prompt = topic_prompt,
       topic = {
         model = "llama-3.1-8b-instant",
-        params = {},
+        params = {
+         chat = { temperature = 1.0, top_p = 1 },
+        command = { temperature = 1.0, top_p = 1 },
+},
       },
       params = {
         chat = { temperature = 1.5, top_p = 1 },

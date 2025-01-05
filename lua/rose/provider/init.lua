@@ -24,7 +24,7 @@ M.init_provider = function(prov_name, endpoint, api_key)
     groq = Groq,
     mistral = Mistral,
     nvidia = Nvidia,
-    ollama = Ollama,
+    qompass = Ollama,
     openai = OpenAI,
     pplx = Perplexity,
     xai = xAI,
@@ -37,7 +37,7 @@ M.init_provider = function(prov_name, endpoint, api_key)
   end
 
   -- For Ollama, we don't need an API key, so skip the API key prompt
-  if prov_name == "ollama" then
+  if prov_name == "qompass" then
     return ProviderClass:new(endpoint, {}) -- Pass an empty table for the API key
   end
 
