@@ -43,7 +43,7 @@ function Ollama:new(endpoint, api_key)
   return setmetatable({
     endpoint = endpoint,
     api_key = api_key,
-    name = "ollama",
+    name = "qompass",
     ollama_installed = vim.fn.executable("ollama") == 1,
   }, self)
 end
