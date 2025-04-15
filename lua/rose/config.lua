@@ -1,7 +1,13 @@
+---@class RoseOptions
+---@field chat_dir string
+---@field state_dir string
+
 local utils = require("rose.utils")
 local ChatHandler = require("rose.chat_handler")
 local init_provider = require("rose.provider").init_provider
 local M = {
+  api = require("rose.api"),
+  menu = require("rose.menu"),
   ui = require("rose.ui"),
   logger = require("rose.logger"),
 }
@@ -32,10 +38,10 @@ Summarize the topic of our conversation above
 in three or four words. Respond only with those words.
 ]]
 
-local defaults = {
+M.options = {
   providers = {
     pplx = {
-      api_key = "",
+      api_key = require("rose.api").pkey("api/perplexity"),
       endpoint = "https://api.perplexity.ai/chat/completions",
       topic_prompt = topic_prompt,
       topic = {
@@ -48,7 +54,7 @@ local defaults = {
       },
     },
     openai = {
-      api_key = "",
+      api_key = require("rose.api").pkey("api/groq"),
       endpoint = "https://api.openai.com/v1/chat/completions",
       topic_prompt = topic_prompt,
       topic = {
@@ -103,7 +109,7 @@ local defaults = {
       },
     },
     mistral = {
-      api_key = "",
+      api_key = require("rose.api").pkey("api/mistral"),
       endpoint = "https://api.mistral.ai/v1/chat/completions",
       topic_prompt = [[
       Summarize the chat above and only provide a short headline of 3 to 4
@@ -120,7 +126,7 @@ local defaults = {
       },
     },
     groq = {
-      api_key = "",
+      api_key = require("rose.api").pkey("api/groq"),
       endpoint = "https://api.groq.com/openai/v1/chat/completions",
       topic_prompt = topic_prompt,
       topic = {
@@ -136,7 +142,7 @@ local defaults = {
       },
     },
     github = {
-      api_key = "",
+      api_key = require("rose.api").pkey("api/gh"),
       endpoint = "https://models.inference.ai.azure.com/chat/completions",
       topic_prompt = topic_prompt,
       topic = {
@@ -149,7 +155,7 @@ local defaults = {
       },
     },
     nvidia = {
-      api_key = "",
+      api_key = require("rose.api").pkey("api/nvidia"),
       endpoint = "https://integrate.api.nvidia.com/v1/chat/completions",
       topic_prompt = topic_prompt,
       topic = {
@@ -162,7 +168,7 @@ local defaults = {
       },
     },
     xai = {
-      api_key = "",
+      api_key = require("rose.api").pkey("api/xai"),
       endpoint = "https://api.x.ai/v1/chat/completions",
       topic_prompt = topic_prompt,
       topic = {
@@ -322,6 +328,7 @@ local defaults = {
   },
 }
 
+
 M.merge_providers = function(default_providers, user_providers)
   local result = {}
   for provider, config in pairs(user_providers) do
@@ -335,10 +342,13 @@ M.options = nil
 M.providers = nil
 M.hooks = nil
 
-function M.setup(opts)
+function M.setup(user_opts)
   if vim.fn.has("nvim-0.10") == 0 then
-    return vim.notify("rose.nvim requires Neovim >= 0.10", vim.log.levels.ERROR)
+    return vim.notify("🌹 rose.nvim requires Neovim >= 0.10", vim.log.levels.ERROR)
   end
+
+  M.options = vim.tbl_deep_extend("force", M.options, user_opts or {})
+end
 
   math.randomseed(os.time())
 
@@ -350,7 +360,8 @@ function M.setup(opts)
   M.options = vim.tbl_deep_extend("force", {}, defaults, opts or {})
   M.providers = M.merge_providers(defaults.providers, opts.providers)
   M.options.providers = nil
-  M.hooks = M.options.hooks
+
+M.hooks = M.options.hooks
   M.options.hooks = nil
 
   -- resolve symlinks
@@ -405,7 +416,6 @@ function M.setup(opts)
   M.chat_handler:buf_handler()
 
   M.loaded = true
-end
 
 M.Prompt = function(params, target, model_obj, prompt, template)
   M.chat_handler:prompt(params, target, model_obj, prompt, template)
