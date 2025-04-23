@@ -4,11 +4,10 @@ return {
   lazy = true,
   config = function(_, opts)
     opts = opts or {}
-  require("rose").setup(opts)
-     local binary = require("rose.rose")
-    binary.init()
     opts.default_provider = "qompass"
-}  require("rose").setup(opts)
+    require("rose").setup(opts)
+    local binary = require("rose.rose")
+    binary.init()
   end,
   dependencies = {
     "MunifTanjim/nui.nvim",
