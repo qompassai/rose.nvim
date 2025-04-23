@@ -18,45 +18,6 @@ return {
 
     return {
       providers = {
-        pplx = {
-          api_key = require("rose.api").pkey("api/perplexity"),
-          endpoint = "https://api.perplexity.ai/chat/completions",
-          topic_prompt = topic_prompt,
-          topic = {
-            model = "llama-3.1-70b-instruct",
-            params = { max_tokens = 64 },
-          },
-          params = {
-            chat = { temperature = 1.1, top_p = 1 },
-            command = { temperature = 1.1, top_p = 1 },
-          },
-        },
-        openai = {
-          api_key = require("rose.api").pkey("api/groq"),
-          endpoint = "https://api.openai.com/v1/chat/completions",
-          topic_prompt = topic_prompt,
-          topic = {
-            model = "gpt-4o-mini",
-            params = { max_completion_tokens = 64 },
-          },
-          params = {
-            chat = { temperature = 1.1, top_p = 1 },
-            command = { temperature = 1.1, top_p = 1 },
-          },
-        },
-        gemini = {
-          api_key = "",
-          endpoint = "https://generativelanguage.googleapis.com/v1beta/models/",
-          topic_prompt = topic_prompt,
-          topic = {
-            model = "gemini-1.5-flash",
-            params = { maxOutputTokens = 64 },
-          },
-          params = {
-            chat = { temperature = 1.1, topP = 1, topK = 10, maxOutputTokens = 8192 },
-            command = { temperature = 0.8, topP = 1, topK = 10, maxOutputTokens = 8192 },
-          },
-        },
         qompass = {
           endpoint = "http://localhost:11434/api/chat",
           topic_prompt = [[
