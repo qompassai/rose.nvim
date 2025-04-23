@@ -83,7 +83,7 @@ function M.is_connecting()
 end
 
 function M:manage_spinner()
-    local should_show = vim.g.mcphub_executing and M.is_connected()
+    local should_show = vim.g.rose_executing and M.is_connected()
     if should_show and not timer then
         timer = vim.loop.new_timer()
         timer:start(
@@ -119,8 +119,8 @@ end
 function M:update_status()
     local status_icon, status_hl = self:get_status_display()
 
-    local count_or_spinner = vim.g.mcphub_executing and spinner_frames[current_frame]
-        or tostring(vim.g.mcphub_active_servers or 0)
+    local count_or_spinner = vim.g.rose_executing and spinner_frames[current_frame]
+        or tostring(vim.g.rose_active_servers or 0)
     return self:format_hl(status_icon .. " " .. count_or_spinner .. " ", status_hl)
 end
 

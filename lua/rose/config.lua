@@ -362,7 +362,6 @@ M.options.providers = nil
 M.hooks = M.options.hooks
 M.options.hooks = nil
 
--- resolve symlinks
 local chat_dir_stat = vim.uv.fs_lstat(M.options.chat_dir)
 if chat_dir_stat and chat_dir_stat.type == "link" then
   M.options.chat_dir = vim.fn.resolve(M.options.chat_dir)
@@ -372,7 +371,6 @@ if state_dir_stat and state_dir_stat.type == "link" then
   M.options.state_dir = vim.fn.resolve(M.options.state_dir)
 end
 
--- Create directories for all config entries ending with "_dir"
 for k, v in pairs(M.options) do
   if type(v) == "string" and k:match("_dir$") then
     local dir = v:gsub("/$", "")
@@ -386,7 +384,6 @@ M.available_providers = vim.tbl_keys(M.providers)
 local available_models = {}
 for _, prov_name in ipairs(M.available_providers) do
   local _prov = init_provider(prov_name, M.providers[prov_name].endpoint, M.providers[prov_name].api_key)
-  -- do not make an API call on startup
   available_models[prov_name] = _prov:get_available_models(false)
 end
 M.available_models = available_models
@@ -432,7 +429,6 @@ M.get_status_info = function()
 end
 
 M.register_hooks = function(hooks, options)
-  -- register user commands
   for hook, _ in pairs(hooks) do
     vim.api.nvim_create_user_command(options.cmd_prefix .. hook, function(params)
       M.call_hook(hook, params)
@@ -440,7 +436,6 @@ M.register_hooks = function(hooks, options)
   end
 end
 
--- hook caller
 M.call_hook = function(name, params)
   if M.hooks[name] ~= nil then
     return M.hooks[name](M, params)
@@ -455,7 +450,6 @@ M.add_default_commands = function(commands, hooks, options)
     ChatToggle = { "popup", "split", "vsplit", "tabnew" },
     Context = { "popup", "split", "vsplit", "tabnew" },
   }
-  -- register default commands
   for cmd, cmd_func in pairs(commands) do
     if hooks[cmd] == nil then
       vim.api.nvim_create_user_command(options.cmd_prefix .. cmd, function(params)

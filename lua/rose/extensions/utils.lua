@@ -1,6 +1,5 @@
 local M = {}
 local ui_utils = require("rose.utils.ui")
-
 function M.parse_params(params, action_name)
     params = params or {}
     local server_name = params.server_name
@@ -71,7 +70,6 @@ function M.setup_codecompanion_variables(enabled)
                     description = "Error in description function: " .. (desc or "")
                 end
             end
-            --remove new lines
             description = description:gsub("\n", " ")
 
             description = resource_name .. " (" .. description .. ")"

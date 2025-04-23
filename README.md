@@ -5,7 +5,7 @@
 # Requires
 
 - [Qompass Diver](https://github.com/qompassai/Diver)
-- [ollama](https://ollama.com/) with [smollm:135m](https://ollama.com/library/smollm:135m) and [`llama3.1:1b`](https://ollama.com/library/llama3.1), at minimum.
+- [rose](https://ollama.com/) with [smollm:135m](https://ollama.com/library/smollm:135m) and [`llama3.1:1b`](https://ollama.com/library/llama3.1), at minimum.
 - [Curl](https://curl.se/)
 - [CMake](https://cmake.org)
 

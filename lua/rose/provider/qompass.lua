@@ -2,15 +2,15 @@ local logger = require("rose.logger")
 local Job = require("plenary.job")
 local utils = require("rose.utils")
 
----@class Ollama
+---@class Rose
 ---@field endpoint string
 ---@field api_key string|table
 ---@field name string
----@field ollama_installed boolean
-local Ollama = {}
-Ollama.__index = Ollama
+---@field rose_installed boolean
+local Rose = {}
+Rose.__index = Rose
 
--- Available API parameters for Ollama
+-- Available API parameters for Rose
 local AVAILABLE_API_PARAMETERS = {
   -- required
   model = true,
@@ -38,23 +38,23 @@ local AVAILABLE_API_PARAMETERS = {
 
 ---@param endpoint string
 ---@param api_key string|table
----@return Ollama
-function Ollama:new(endpoint, api_key)
+---@return Rose
+function Rose:new(endpoint, api_key)
   return setmetatable({
     endpoint = endpoint,
     api_key = api_key,
     name = "qompass",
-    ollama_installed = vim.fn.executable("ollama") == 1,
+    rose_installed = vim.fn.executable("rose") == 1,
   }, self)
 end
 
 -- Placeholder for setting model (not implemented)
-function Ollama:set_model(_) end
+function Rose:set_model(_) end
 
 -- Preprocesses the payload before sending to the API
 ---@param payload table
 ---@return table
-function Ollama:preprocess_payload(payload)
+function Rose:preprocess_payload(payload)
   for _, message in ipairs(payload.messages) do
     message.content = message.content:gsub("^%s*(.-)%s*$", "%1")
   end
@@ -63,20 +63,20 @@ end
 
 -- Returns the curl parameters for the API request
 ---@return table
-function Ollama:curl_params()
+function Rose:curl_params()
   return { self.endpoint }
 end
 
--- Verifies the API connection (always returns true for Ollama)
+-- Verifies the API connection (always returns true for Rose)
 ---@return boolean
-function Ollama:verify()
+function Rose:verify()
   return true
 end
 
 -- Processes the stdout from the API response
 ---@param response string
 ---@return string|nil
-function Ollama:process_stdout(response)
+function Rose:process_stdout(response)
   if response:match("message") and response:match("content") then
     local success, content = pcall(vim.json.decode, response)
     if success and content.message and content.message.content then
@@ -89,18 +89,18 @@ end
 
 -- Processes the onexit event from the API response
 ---@param res string
-function Ollama:process_onexit(res)
+function Rose:process_onexit(res)
   local success, parsed = pcall(vim.json.decode, res)
   if success and parsed.error then
-    logger.error("Ollama - error: " .. parsed.error)
+    logger.error("Rose - error: " .. parsed.error)
   end
 end
 
 -- Returns the list of available models
 ---@return string[]
-function Ollama:get_available_models()
-  if not self.ollama_installed then
-    logger.error("Ollama is not installed or not in PATH.")
+function Rose:get_available_models()
+  if not self.rose_installed then
+    logger.error("Rose is not installed or not in PATH.")
     return {}
   end
 
@@ -113,18 +113,18 @@ function Ollama:get_available_models()
   self:process_onexit(parsed_response)
 
   if parsed_response == "" then
-    logger.debug("Ollama server not running.")
+    logger.debug("Rose server not running.")
     return {}
   end
 
   local success, parsed_data = pcall(vim.json.decode, parsed_response)
   if not success then
-    logger.error("Ollama - Error parsing JSON: " .. vim.inspect(parsed_data))
+    logger.error("Rose - Error parsing JSON: " .. vim.inspect(parsed_data))
     return {}
   end
 
   if not parsed_data.models then
-    logger.error("Ollama - No models found. Please use 'ollama pull' to download one.")
+    logger.error("Rose - No models found. Please use 'rose pull' to download one.")
     return {}
   end
 
@@ -136,4 +136,4 @@ function Ollama:get_available_models()
   return names
 end
 
-return Ollama
+return Rose
