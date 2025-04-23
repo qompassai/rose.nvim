@@ -102,13 +102,11 @@ function M:manage_spinner()
     end
 end
 
--- Get appropriate status icon and highlight
 function M:get_status_display()
     local tower = "󰐻"
     return tower, M.is_connected() and "DiagnosticInfo" or M.is_connecting() and "DiagnosticWarn" or "DiagnosticError"
 end
 
--- Format with highlight
 function M:format_hl(text, hl)
     if hl then
         return string.format("%%#%s#%s%%*", hl, text)
