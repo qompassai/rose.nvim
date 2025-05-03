@@ -1,6 +1,4 @@
-# rose.nvim
-
-![Repository Views](https://komarev.com/ghpvc/?username=qompassai-rose.nvim)
+# Rose.nvim
 
 ## Your quality AI menu
 
