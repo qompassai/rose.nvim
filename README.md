@@ -1,6 +1,6 @@
-# rose.nvim
+<h3> rose.nvim </h3>
 
-## Your quality AI menu
+<h2> Your quality AI menu </h2>
 
 # Requires
 
