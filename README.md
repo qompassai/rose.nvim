@@ -1,11 +1,14 @@
+<!-- /qompassai/rose.nvim/README.md -->
+<!-- ---------------------------- -->
+<!-- Copyright (C) 2025 Qompass AI, All rights reserved -->
+
 <h3> rose.nvim </h3>
 
 <h2> Your quality AI menu </h2>
-
+![Repository Views](https://komarev.com/ghpvc/?username=qompassai-rose.nvim)
 # Requires
 
 - [Qompass Diver](https://github.com/qompassai/Diver)
-- [rose](https://ollama.com/) with [smollm:135m](https://ollama.com/library/smollm:135m) and [`llama3.1:1b`](https://ollama.com/library/llama3.1), at minimum.
 - [Curl](https://curl.se/)
 - [CMake](https://cmake.org)
 
