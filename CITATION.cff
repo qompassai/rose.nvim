@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-title: "rose.nvim"
+title: "Qompass AI's rose.nvim: Your Quality AI Menu"
 message: "If you use this software, please cite it as below."
 authors:
   - family-names: "Porter"
@@ -16,4 +16,4 @@ keywords:
   - Post-Quantum Cryptography
   - Education
   - Healthcare
-abstract: ""
+abstract: "Qompass AI presents Rose.nvim: Your Quality AI Menu"

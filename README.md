@@ -6,6 +6,7 @@
 
 <h2> Your quality AI menu </h2>
 ![Repository Views](https://komarev.com/ghpvc/?username=qompassai-rose.nvim)
+![GitHub all releases](https://img.shields.io/github/downloads/qompassai/rose.nvim/total?style=flat-square)
 # Requires
 
 - [Qompass Diver](https://github.com/qompassai/Diver)

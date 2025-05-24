@@ -1,12 +1,13 @@
-[lib]
-crate-type = ["cdylib"]
-
 [package]
 name = "rose-tokenizers"
-edition = { workspace = true }
 version = { workspace = true }
 rust-version = { workspace = true }
-license = { workspace = true }
+edition = "2024"
+license = "AGPL 3.0 AND Q-CDA 1.0"
+authors = ["Matt A. Porter <map@qompass.ai>"]
+
+[lib]
+crate-type = ["cdylib"]
 
 [lints]
 workspace = true
@@ -26,3 +27,14 @@ lua52 = ["mlua/lua52"]
 lua53 = ["mlua/lua53"]
 lua54 = ["mlua/lua54"]
 luajit = ["mlua/luajit"]
+
+[profile.release]
+codegen-units = 1
+debug = false
+incremental = false
+lto = "thin"
+opt-level = 3
+panic = "abort"
+strip = "debuginfo"
+overflow-checks = true
+relocation-model = "pic"
