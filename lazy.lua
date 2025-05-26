@@ -1,3 +1,6 @@
+--/qompassai/rose.nvim/lazy.lua
+-- --------------------------------------------
+-- Copyright (C) 2025 Qompass AI, All rights reserved
 return {
   "qompassai/rose.nvim",
   lazy = true,
@@ -161,7 +164,6 @@ return {
           },
         },
       },
-
       cmd_prefix = "Rose",
       system_prompt = {
         chat = system_chat_prompt,
@@ -178,13 +180,10 @@ return {
     if ok then
       binary.init()
     end
-
     require("rose").setup(opts)
-
     vim.api.nvim_create_user_command("RoseDownload", function()
       local rose = require("rose.rose")
       rose.rose_dl()
     end, { desc = "Download Rose binary" })
   end,
 }
-

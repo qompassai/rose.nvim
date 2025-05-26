@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# /qompassai/rose.nvim/build.sh
+# -----------------------------
+# Copyright (C) 2025 Qompass AI, All rights reserved
 set -e
 REPO_OWNER="qompassai"
 REPO_NAME="rose.nvim"
