@@ -1,35 +1,30 @@
+--/qompassai/rose.nvim/lua/ui.lua
+-- --------------------------------------------
+-- Copyright (C) 2025 Qompass AI, All rights reserved
 local utils = require("rose.utils")
-
 local M = {}
-
 M.Target = {
   rewrite = 0, -- for replacing the selection, range or the current line
   append = 1, -- for appending after the selection, range or the current line
   prepend = 2, -- for prepending before the selection, range or the current line
   popup = 3, -- for writing into the popup window
 
-  -- for writing into a new buffer
   ---@param filetype nil | string # nil = same as the original buffer
   ---@return table # a table with type=4 and filetype=filetype
   enew = function(filetype)
     return { type = 4, filetype = filetype }
   end,
 
-  --- for creating a new horizontal split
   ---@param filetype nil | string # nil = same as the original buffer
   ---@return table # a table with type=5 and filetype=filetype
   new = function(filetype)
     return { type = 5, filetype = filetype }
   end,
-
-  --- for creating a new vertical split
   ---@param filetype nil | string # nil = same as the original buffer
   ---@return table # a table with type=6 and filetype=filetype
   vnew = function(filetype)
     return { type = 6, filetype = filetype }
   end,
-
-  --- for creating a new tab
   ---@param filetype nil | string # nil = same as the original buffer
   ---@return table # a table with type=7 and filetype=filetype
   tabnew = function(filetype)

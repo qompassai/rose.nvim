@@ -1,7 +1,9 @@
+--/qompassai/rose.nvim/lua/config.lua
+-- --------------------------------------------
+-- Copyright (C) 2025 Qompass AI, All rights reserved
 ---@class RoseOptions
 ---@field chat_dir string
 ---@field state_dir string
-
 local utils = require("rose.utils")
 local ChatHandler = require("rose.chat_handler")
 local init_provider = require("rose.provider").init_provider
@@ -36,7 +38,6 @@ local topic_prompt = [[
 Summarize the topic of our conversation above
 in three or four words. Respond only with those words.
 ]]
-
 M.options = {
   providers = {
     pplx = {
@@ -257,11 +258,9 @@ M.options = {
   ]],
   template_prepend = [[
   I have the following content from {{filename}}:
-
   ```{{filetype}}
   {{selection}}
   ```
-
   {{command}}
   Respond exclusively with the snippet that should be prepended before the selection above.
   DO NOT RESPOND WITH ANY TYPE OF COMMENTS, JUST THE CODE!!!
@@ -294,7 +293,6 @@ M.options = {
       local status = string.format("%s (%s)", provider.name, status_info.model)
       rose.logger.info(string.format("Current provider: %s", status))
     end,
-    -- RoseImplement rewrites the provided selection/range based on comments in it
     Implement = function(rose, params)
       local template = [[
       Consider the following content from {{filename}}:
@@ -302,7 +300,6 @@ M.options = {
       ```{{filetype}}
       {{selection}}
       ```
-
       Please rewrite this according to the contained instructions.
       Respond exclusively with the snippet that should replace the selection above.
       ]]
@@ -310,7 +307,6 @@ M.options = {
       rose.logger.info("Implementing selection with model: " .. model_obj.name)
       rose.Prompt(params, rose.ui.Target.rewrite, model_obj, nil, template)
     end,
-    -- RoseAsk simply provides an answer to a question within a popup window
     Ask = function(rose, params)
       local template = [[
       In light of your existing knowledge base, please generate a response that
@@ -326,7 +322,6 @@ M.options = {
     end,
   },
 }
-
 M.merge_providers = function(default_providers, user_providers)
   local result = {}
   for provider, config in pairs(user_providers) do
@@ -334,34 +329,26 @@ M.merge_providers = function(default_providers, user_providers)
   end
   return result
 end
-
 M.loaded = false
 M.options = nil
 M.providers = nil
 M.hooks = nil
-
 function M.setup(user_opts)
   if vim.fn.has("nvim-0.10") == 0 then
     return vim.notify("🌹 rose.nvim requires Neovim >= 0.10", vim.log.levels.ERROR)
   end
-
   M.options = vim.tbl_deep_extend("force", M.options, user_opts or {})
 end
-
 math.randomseed(os.time())
-
 local valid_provider_names = vim.tbl_keys(defaults.providers)
 if not utils.has_valid_key(opts.providers, valid_provider_names) then
   return vim.notify("Invalid provider configuration", vim.log.levels.ERROR)
 end
-
 M.options = vim.tbl_deep_extend("force", {}, defaults, opts or {})
 M.providers = M.merge_providers(defaults.providers, opts.providers)
 M.options.providers = nil
-
 M.hooks = M.options.hooks
 M.options.hooks = nil
-
 local chat_dir_stat = vim.uv.fs_lstat(M.options.chat_dir)
 if chat_dir_stat and chat_dir_stat.type == "link" then
   M.options.chat_dir = vim.fn.resolve(M.options.chat_dir)
@@ -370,7 +357,6 @@ local state_dir_stat = vim.uv.fs_lstat(M.options.state_dir)
 if state_dir_stat and state_dir_stat.type == "link" then
   M.options.state_dir = vim.fn.resolve(M.options.state_dir)
 end
-
 for k, v in pairs(M.options) do
   if type(v) == "string" and k:match("_dir$") then
     local dir = v:gsub("/$", "")
@@ -378,19 +364,15 @@ for k, v in pairs(M.options) do
     vim.fn.mkdir(dir, "p")
   end
 end
-
 M.available_providers = vim.tbl_keys(M.providers)
-
 local available_models = {}
 for _, prov_name in ipairs(M.available_providers) do
   local _prov = init_provider(prov_name, M.providers[prov_name].endpoint, M.providers[prov_name].api_key)
   available_models[prov_name] = _prov:get_available_models(false)
 end
 M.available_models = available_models
-
 table.sort(M.available_providers)
 M.register_hooks(M.hooks, M.options)
-
 M.cmd = {
   ChatFinder = "chat_finder",
   ChatStop = "stop",
@@ -404,30 +386,23 @@ M.cmd = {
   Provider = "provider",
   Retry = "retry",
 }
-
 M.chat_handler = ChatHandler:new(M.options, M.providers, M.available_providers, M.available_models, M.cmd)
 M.chat_handler:prepare_commands()
 M.add_default_commands(M.cmd, M.hooks, M.options)
 M.chat_handler:buf_handler()
-
 M.loaded = true
-
 M.Prompt = function(params, target, model_obj, prompt, template)
   M.chat_handler:prompt(params, target, model_obj, prompt, template)
 end
-
 M.ChatNew = function(params, chat_prompt)
   M.chat_handler:chat_new(params, chat_prompt)
 end
-
 M.get_model = function(model_type)
   return M.chat_handler:get_model(model_type)
 end
-
 M.get_status_info = function()
   return M.chat_handler:get_status_info()
 end
-
 M.register_hooks = function(hooks, options)
   for hook, _ in pairs(hooks) do
     vim.api.nvim_create_user_command(options.cmd_prefix .. hook, function(params)
@@ -435,14 +410,12 @@ M.register_hooks = function(hooks, options)
     end, { nargs = "?", range = true, desc = "Rose LLM plugin" })
   end
 end
-
 M.call_hook = function(name, params)
   if M.hooks[name] ~= nil then
     return M.hooks[name](M, params)
   end
   M.logger.error("The hook '" .. name .. "' does not exist.")
 end
-
 M.add_default_commands = function(commands, hooks, options)
   local completions = {
     ChatNew = { "popup", "split", "vsplit", "tabnew" },
@@ -473,5 +446,4 @@ M.add_default_commands = function(commands, hooks, options)
     end
   end
 end
-
 return M

@@ -1,5 +1,7 @@
+--/qompassai/rose.nvim/lua/init.lua
+-- --------------------------------
+-- Copyright (C) 2025 Qompass AI, All rights reserved
 local M = {}
-
 M.did_setup = false
 local binary_ok, binary = pcall(require, "rose.binary")
 if not binary_ok then

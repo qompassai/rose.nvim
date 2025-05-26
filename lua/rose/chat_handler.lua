@@ -1,3 +1,6 @@
+--/qompassai/rose.nvim/lua/chat_handler.lua
+-- --------------------------------------------
+-- Copyright (C) 2025 Qompass AI, All rights reserved
 local utils = require("rose.utils")
 local futils = require("rose.file_utils")
 local logger = require("rose.logger")

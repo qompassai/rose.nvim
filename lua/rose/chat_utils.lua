@@ -1,3 +1,6 @@
+--/qompassai/rose.nvim/lua/chat_utils.lua
+-- --------------------------------------------
+-- Copyright (C) 2025 Qompass AI, All rights reserved
 local ui = require("rose.ui")
 local utils = require("rose.utils")
 
