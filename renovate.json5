@@ -1,7 +1,6 @@
-// /qompassai/rose.nvim/renovate.json
+// /qompassai/rose.nvim/renovate.json5
 // ------------------------------------------
 // Copyright (C) 2025 Qompass AI, All rights reserved
-
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
@@ -10,7 +9,9 @@
   ],
   "lockFileMaintenance": {
     "enabled": true,
-    "extends": ["schedule:weekly"]
+    "extends": [
+      "schedule:weekly"
+    ]
   },
   "nix": {
     "enabled": true
