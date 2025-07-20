@@ -8,6 +8,6 @@ authors:
 version: "2025-07-20"
 date-released: "2025-07-20"
 repository-code: "https://github.com/qompassai/rose.nvim"
-license: "Apache-2.0"
+license: "Qompass AI Commercial Distribution License & AGPL 3.0"
 message: "If you use this software, please cite it as below."
-abstract: ""
+abstract: ''
