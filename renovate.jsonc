@@ -1,0 +1,42 @@
+// /qompassai/qompass-hold/renovate.json
+// Qompass AI Renovate Config
+// Copyright (C) 2025 Qompass AI, All rights reserved
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "group:allNonMajor"
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "extends": [
+      "schedule:weekly"
+    ]
+  },
+  "nix": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "matchPackagePatterns": [
+        "lua",
+        "luajit",
+        "luv",
+        "nvim",
+        "neovim",
+        "plenary",
+        "telescope"
+      ],
+      "allowedVersions": [
+        "5.1.x",
+        "2.1.x"
+      ]
+    }
+  ],
+  "dependencyDashboard": true,
+  "baseBranches": [
+    "main"
+  ],
+  "commitMessagePrefix": "chore(deps): ",
+  "automerge": false
+}
