@@ -38,9 +38,9 @@ function GitHub:preprocess_payload(payload)
 end
 
 -- Returns the list of available models
----@param online boolean
+---@param _online boolean
 ---@return string[]
-function GitHub:get_available_models(online)
+function GitHub:get_available_models(_online)
   return {
     -- AI21 Labs Models
     "ai21-jamba-1.5-large",

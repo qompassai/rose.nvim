@@ -40,8 +40,8 @@ function M.call(server_name, tool_name, args, callback)
       callback("cancelled")
       return
     end
-    if err then
-      callback(err)
+    if err or not client then
+      callback(err or "MCP connected without a client")
       return
     end
     request = client:call_tool(tool_name, args, function(call_err, result)

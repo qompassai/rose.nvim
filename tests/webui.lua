@@ -60,7 +60,9 @@ end
 local function client(port, args, timeout_ms)
   local argv = { python, client_script, tostring(port) }
   vim.list_extend(argv, args)
-  local done, result = false, nil
+  local done = false
+  ---@type vim.SystemCompleted?
+  local result
   vim.system(argv, { text = true }, function(completed)
     result, done = completed, true
   end)
@@ -70,7 +72,9 @@ local function client(port, args, timeout_ms)
     end, 5),
     "client deadline exceeded"
   )
+  assert(result, "client completion must include a process result")
   assert(result.code == 0, "client failed: " .. tostring(result.stderr))
+  assert(result.stdout, "client must return a JSON report on stdout")
   return vim.json.decode(result.stdout)
 end
 local function json_body(report)
@@ -143,7 +147,7 @@ test("start binds loopback with a random port and per-session token", function()
   equal(status.running, true)
   equal(status.port, port)
   equal(status.clients, 0)
-  local address = state.server:getsockname()
+  local address = assert(state.server:getsockname())
   equal(address.ip, "127.0.0.1")
   equal(address.port, port)
 end)
@@ -478,7 +482,9 @@ test("real rose.speech module, when installed, is discovered and reports capabil
 end)
 
 test("stop closes held client sockets and the listener", function()
-  local done, result = false, nil
+  local done = false
+  ---@type vim.SystemCompleted?
+  local result
   vim.system(
     { python, client_script, tostring(port), "hold", "--count", "2", "--hold-ms", "8000" },
     { text = true },
@@ -501,6 +507,8 @@ test("stop closes held client sockets and the listener", function()
     end, 10),
     "hold client did not observe EOF"
   )
+  assert(result, "hold client completion must include a process result")
+  assert(result.stdout, "hold client must return a JSON report on stdout")
   local report = vim.json.decode(result.stdout)
   equal(report.eof_count, 2)
   assert(report.elapsed_ms < 6000, "clients were not closed promptly")
@@ -531,7 +539,7 @@ test("rose.webui setup registers commands and honours the enabled gate", functio
   end
   local url, err = webui.start()
   equal(url, nil)
-  assert(err:find("webui.enabled", 1, true), err)
+  assert(err and err:find("webui.enabled", 1, true), err)
   webui.setup(config({ webui = { enabled = true, open = true } }))
   url = assert(webui.start())
   assert(url:find("^http://127%.0%.0%.1:%d+/%?token=%x+$"), url)
@@ -557,7 +565,7 @@ test("unwired configuration falls back to the documented defaults", function()
   webui.setup(fallback)
   local url, err = webui.start()
   equal(url, nil)
-  assert(err:find("disabled", 1, true), err)
+  assert(err and err:find("disabled", 1, true), err)
   webui.shutdown()
 end)
 

@@ -75,7 +75,8 @@ local function resolve_workspace(configured)
     root = "/"
   end
   local real = assert(uv.fs_realpath(root), "workspace does not exist")
-  assert(uv.fs_stat(real).type == "directory", "workspace must be a directory")
+  local stat = uv.fs_stat(real)
+  assert(stat and stat.type == "directory", "workspace must be a directory")
   return real
 end
 

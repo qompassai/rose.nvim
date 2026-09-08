@@ -43,8 +43,15 @@ local function config(opts)
   }, opts or {})
 end
 
+---@generic Result, Token
+---@param start fun(callback: fun(err: string?, result?: Result)): Token
+---@return string? err
+---@return Result? result
+---@return Token token
 local function await(start)
-  local calls, err, result = 0, nil, nil
+  local calls, result = 0, nil
+  ---@type string?
+  local err
   local token = start(function(e, r)
     calls, err, result = calls + 1, e, r
   end)
@@ -112,6 +119,7 @@ test("download dry-run executes only a preview subprocess", function()
     return hub.download(vim.tbl_extend("force", spec, { dry_run = true }), cb)
   end)
   assert(not err, err)
+  assert(type(result) == "table", "download dry-run must return a preview")
   equal(result.total_bytes, 10)
   equal(result.commit, string.rep("a", 40))
   equal(#records(), 1)
@@ -121,7 +129,7 @@ end)
 test("download exact native preview and approval execute asynchronously", function()
   hub.setup(config())
   local saw_preview = false
-  vim.ui.select = function(items, opts, cb)
+  vim.ui.select = function(items, _opts, cb)
     local lines = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
     for _, text in ipairs({
       "example/repo",
@@ -145,6 +153,7 @@ test("download exact native preview and approval execute asynchronously", functi
   end)
   assert(not err, err)
   assert(saw_preview)
+  assert(type(result) == "table", "download must return a transfer result")
   equal(result.direction, "download")
   equal(#records(), 2)
   equal(records()[2].preview.commit, string.rep("a", 40))
@@ -155,7 +164,7 @@ test("native cancellation rejects transfers after preview", function()
   local err = await(function(cb)
     return hub.download(spec, cb)
   end)
-  assert(err:find("not approved"))
+  assert(err and err:find("not approved"))
   equal(#records(), 1)
 end)
 
@@ -164,7 +173,7 @@ test("untrusted upload is rejected before subprocess", function()
   local err = await(function(cb)
     return hub.upload(upload, cb)
   end)
-  assert(err:find("trusted"))
+  assert(err and err:find("trusted"))
   equal(#records(), 0)
 end)
 
@@ -174,7 +183,7 @@ test("spec booleans cannot approve upload or provide credentials", function()
     local err = await(function(cb)
       return hub.upload(vim.tbl_extend("force", upload, { [key] = true }), cb)
     end)
-    assert(err:find("unknown Hub spec"))
+    assert(err and err:find("unknown Hub spec"))
   end
   equal(#records(), 0)
 end)
@@ -188,7 +197,7 @@ test("upload setup capability must approve exact preview data not boolean", func
   local err = await(function(cb)
     return hub.upload(upload, cb)
   end)
-  assert(err:find("not approved"))
+  assert(err and err:find("not approved"))
   equal(#records(), 1)
 end)
 
@@ -202,7 +211,7 @@ test("upload setup capability rejects modified preview", function()
   local err = await(function(cb)
     return hub.upload(upload, cb)
   end)
-  assert(err:find("not approved"))
+  assert(err and err:find("not approved"))
   equal(#records(), 1)
 end)
 
@@ -217,6 +226,7 @@ test("upload setup capability approves frozen complete manifest once", function(
     return hub.upload(upload, cb)
   end)
   assert(not err, err)
+  assert(type(result) == "table", "upload must return a transfer result")
   equal(result.direction, "upload")
   equal(#records(), 2)
   equal(records()[2].preview.files[1].remote_path, "paper/README.md")
@@ -313,12 +323,12 @@ test("native process stop cancels once and bounded active operation", function()
   local busy = await(function(cb)
     return hub.download(spec, cb)
   end)
-  assert(busy:find("another Hub"))
+  assert(busy and busy:find("another Hub"))
   assert(hub.stop())
   assert(vim.wait(5000, function()
     return calls == 1
   end, 10))
-  assert(cancelled:find("cancelled"))
+  assert(type(cancelled) == "string" and cancelled:find("cancelled"))
   equal(token.cancel(), false)
   equal(hub.status().state, "cancelled")
 end)
@@ -339,6 +349,7 @@ test("cancelling pending UI invalidates late approval", function()
   assert(vim.wait(5000, function()
     return calls == 1
   end, 10))
+  assert(type(select_cb) == "function", "download must capture its approval callback")
   select_cb("Download exactly this manifest")
   vim.wait(50, function()
     return false
@@ -353,6 +364,7 @@ test("paper metadata and repository assets are separate", function()
     return hub.paper({ id = "2501.00001" }, cb)
   end)
   assert(not err, err)
+  assert(type(p) == "table", "paper lookup must return metadata")
   equal(p.title, "Offline paper")
   equal(records()[1].operation, "paper")
   vim.ui.select = accept
@@ -386,7 +398,7 @@ test("actual isolated Python helper rejects traversal offline in native subproce
       cb
     )
   end)
-  assert(err:find("traversal", 1, true), err)
+  assert(err and err:find("traversal", 1, true), err)
 end)
 
 test("optional commands are native explicit and idempotent", function()

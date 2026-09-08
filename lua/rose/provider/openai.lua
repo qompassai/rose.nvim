@@ -1,10 +1,10 @@
+local Job = require("plenary.job")
 local logger = require("rose.logger")
 local utils = require("rose.utils")
-local Job = require("plenary.job")
 
 ---@class OpenAI
 ---@field endpoint string
----@field api_key string|table
+---@field api_key string|string[]|nil
 ---@field name string
 local OpenAI = {}
 OpenAI.__index = OpenAI
@@ -34,7 +34,7 @@ local AVAILABLE_API_PARAMETERS = {
 
 -- Creates a new OpenAI instance
 ---@param endpoint string
----@param api_key string|table
+---@param api_key string|string[]|nil
 ---@return OpenAI
 function OpenAI:new(endpoint, api_key)
   return setmetatable({
@@ -84,18 +84,31 @@ end
 -- Verifies the API key or executes a routine to retrieve it
 ---@return boolean
 function OpenAI:verify()
-  if type(self.api_key) == "table" then
-    local command = table.concat(self.api_key, " ")
-    local handle = io.popen(command)
+  local current_key = self.api_key
+  if type(current_key) == "table" then
+    local command = table.concat(current_key, " ")
+    local handle, open_err = io.popen(command)
     if handle then
-      self.api_key = handle:read("*a"):gsub("%s+", "")
-      handle:close()
+      local key, read_err = handle:read("*a")
+      local closed, close_err = handle:close()
+      if not key or not closed then
+        logger.error(
+          "Error reading API key of " .. self.name .. ": " .. tostring(read_err or close_err)
+        )
+        return false
+      end
+      key = key:gsub("%s+", "")
+      if key == "" then
+        logger.error("Empty API key of " .. self.name)
+        return false
+      end
+      self.api_key = key
       return true
     else
-      logger.error("Error verifying API key of " .. self.name)
+      logger.error("Error verifying API key of " .. self.name .. ": " .. tostring(open_err))
       return false
     end
-  elseif self.api_key and self.api_key:match("%S") then
+  elseif type(current_key) == "string" and current_key:match("%S") then
     return true
   else
     logger.error("Error with API key " .. self.name .. " " .. vim.inspect(self.api_key))
@@ -111,10 +124,11 @@ function OpenAI:process_stdout(response)
     local success, content = pcall(vim.json.decode, response)
     if
       success
-      and content.choices
-      and content.choices[1]
-      and content.choices[1].delta
-      and content.choices[1].delta.content
+      and type(content) == "table"
+      and type(content.choices) == "table"
+      and type(content.choices[1]) == "table"
+      and type(content.choices[1].delta) == "table"
+      and type(content.choices[1].delta.content) == "string"
     then
       return content.choices[1].delta.content
     else
@@ -127,7 +141,10 @@ end
 ---@param res string
 function OpenAI:process_onexit(res)
   local success, parsed = pcall(vim.json.decode, res)
-  if success and parsed.error and parsed.error.message then
+  if not success or type(parsed) ~= "table" then
+    return
+  end
+  if type(parsed.error) == "table" and type(parsed.error.message) == "string" then
     logger.error(
       string.format(
         "OpenAI - code: %s message: %s type: %s",
@@ -136,7 +153,12 @@ function OpenAI:process_onexit(res)
         parsed.error.type
       )
     )
-  elseif success and parsed.choices and parsed.choices[1] and parsed.choices[1].message then
+  elseif
+    type(parsed.choices) == "table"
+    and type(parsed.choices[1]) == "table"
+    and type(parsed.choices[1].message) == "table"
+    and type(parsed.choices[1].message.content) == "string"
+  then
     return parsed.choices[1].message.content
   end
 end
@@ -180,12 +202,18 @@ function OpenAI:get_available_models(online)
       },
       on_exit = function(job)
         local parsed_response = utils.parse_raw_response(job:result())
-        self:process_onexit(parsed_response)
         ids = {}
+        if not parsed_response then
+          logger.error("OpenAI - No model response received")
+          return
+        end
+        self:process_onexit(parsed_response)
         local success, decoded = pcall(vim.json.decode, parsed_response)
-        if success and decoded.data then
+        if success and type(decoded) == "table" and type(decoded.data) == "table" then
           for _, item in ipairs(decoded.data) do
-            table.insert(ids, item.id)
+            if type(item) == "table" and type(item.id) == "string" then
+              table.insert(ids, item.id)
+            end
           end
         end
         return ids

@@ -9,7 +9,8 @@ function M.setup(opts)
     return
   end
   root = uv.fs_realpath(opts.diver.path)
-  assert(root and uv.fs_stat(root).type == "directory", "diver.path must be an existing directory")
+  local stat = root and uv.fs_stat(root)
+  assert(root and stat and stat.type == "directory", "diver.path must be an existing directory")
   if not opts.trusted then
     return
   end

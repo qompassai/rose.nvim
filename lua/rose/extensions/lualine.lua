@@ -86,6 +86,9 @@ function M:manage_spinner()
     local should_show = vim.g.rose_executing and M.is_connected()
     if should_show and not timer then
         timer = vim.loop.new_timer()
+        if not timer then
+            return
+        end
         timer:start(
             0,
             spinner_interval,

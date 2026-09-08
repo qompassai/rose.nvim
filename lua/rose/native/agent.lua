@@ -260,8 +260,8 @@ function M.run(config, task, callback, opts)
     return token
   end
   local all_schemas, available, tools_error = host_tools(tools)
-  if tools_error then
-    finish(tools_error)
+  if tools_error or not all_schemas or not available then
+    finish(tools_error or "tools unavailable")
     return token
   end
   local validation = require("rose.native.validation")

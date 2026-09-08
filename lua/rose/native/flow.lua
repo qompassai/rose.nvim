@@ -63,13 +63,16 @@ end
 -- Extract the JSON report from an MCP tool result: structuredContent first, then the first
 -- text part that decodes as JSON. Returns nil when no report is present.
 local function result_report(result)
-  if result.structuredContent then
+  if type(result.structuredContent) == "table" then
     return result.structuredContent
   end
+  if type(result.content) ~= "table" then
+    return nil
+  end
   for _, part in ipairs(result.content or {}) do
-    if part.type == "text" then
+    if type(part) == "table" and part.type == "text" and type(part.text) == "string" then
       local ok, decoded = pcall(vim.json.decode, part.text)
-      if ok then
+      if ok and type(decoded) == "table" then
         return decoded
       end
     end
@@ -132,8 +135,8 @@ function M.call(name, args, callback)
     if finished or stopping then
       return
     end
-    if err then
-      halt(err)
+    if err or not client then
+      halt(err or "Flow connected without an MCP client")
       return
     end
     client:call_tool(name, args, called, M.config.flow.timeout)
@@ -182,6 +185,11 @@ function M.stop(callback)
   local uv, elapsed, warned = vim.uv or vim.loop, 0, false
   local timer = uv.new_timer()
   M.stopping.timer = timer
+  if not timer then
+    -- Preserve the writer fence: only the MCP exit callback may release it.
+    client.on_exit = complete
+    return
+  end
   timer:start(
     0,
     10,

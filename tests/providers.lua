@@ -15,8 +15,16 @@ end
 local function equal(a, b)
   assert(vim.deep_equal(a, b), vim.inspect(a) .. " ~= " .. vim.inspect(b))
 end
+---@generic Result, Token
+---@param start fun(callback: fun(err: string?, result?: Result)): Token
+---@param timeout? integer
+---@return string? err
+---@return Result? result
+---@return Token token
 local function await(start, timeout)
-  local done, err, result, calls = false, nil, nil, 0
+  local done, calls, result = false, 0, nil
+  ---@type string?
+  local err
   local token = start(function(e, r)
     calls = calls + 1
     err, result, done = e, r, true
@@ -128,6 +136,7 @@ for _, case in ipairs(cases) do
     local cfg = config(name, api)
     local err, first = invoke(cfg)
     assert(not err, err)
+    assert(type(first) == "table", "provider must return a message")
     equal(first.content, "Public answer.")
     equal(first.tool_calls[1].id, "call_fixture_17")
     equal(first.tool_calls[1]["function"].name, "lookup")
@@ -159,6 +168,7 @@ for _, case in ipairs(cases) do
     }
     err, first = invoke(cfg, next_messages)
     assert(not err, err)
+    assert(type(first) == "table", "provider replay must return a message")
     equal(first.content, "Replay verified.")
     equal(first.finish_reason, "stop")
   end)
@@ -168,6 +178,7 @@ test("Sonar is search/citations, never advertised as generic custom tools", func
   local cfg = config("perplexity", "sonar")
   local err, response = invoke(cfg, input, {})
   assert(not err, err)
+  assert(type(response) == "table", "Sonar must return a response")
   equal(response.citations[1].url, "https://example.test/doc")
   equal(response._provider.response.search_results[1].title, "Fixture")
   equal(router.capabilities(cfg).tools, false)
@@ -180,7 +191,7 @@ end)
 test("Ollama remains default and receives its original config", function()
   local module, got = require("rose.native.ollama"), nil
   local original = module.chat
-  module.chat = function(cfg, messages, schemas, cb)
+  module.chat = function(cfg, _messages, _schemas, cb)
     got = cfg
     vim.schedule(function()
       cb(nil, { role = "assistant", content = "local" })
@@ -192,6 +203,7 @@ test("Ollama remains default and receives its original config", function()
   module.chat = original
   assert(not err, err)
   equal(got, local_cfg.ollama)
+  assert(type(message) == "table", "Ollama must return a message")
   equal(message.content, "local")
   equal(router.describe(local_cfg).cloud, false)
 end)
@@ -274,6 +286,7 @@ test("NVIDIA loopback can explicitly disable authentication", function()
     config("nvidia", "chat", { endpoint = "http://" .. authority .. "/noauth", auth = false })
   local err, response = invoke(cfg)
   assert(not err, err)
+  assert(type(response) == "table", "NVIDIA must return a message")
   equal(response.content, "Public answer.")
   cfg.providers.nvidia.endpoint = "https://example.test/v1"
   cfg.providers.nvidia.credential_host = "example.test"
@@ -319,10 +332,12 @@ test("raw JSON preserves native fields and explicit beta headers", function()
   }
   local err, response = request(cfg, { path = "/inspect?mode=fixture", body = body })
   assert(not err, err)
+  assert(type(response) == "table", "inspect fixture must return a response")
   equal(response.body, body)
   equal(response.beta, "fixture-beta")
   err, response = request(cfg, { path = "/inspect", method = "GET" })
   assert(not err, err)
+  assert(type(response) == "table", "inspect fixture must return a response")
   equal(response.method, "GET")
   for _, path in ipairs({
     "https://evil.test",
@@ -351,6 +366,7 @@ for _, provider in ipairs({ "openai", "anthropic", "xai", "nvidia", "perplexity"
     })
     assert(not err, err)
     assert(#events >= 2)
+    assert(type(result) == "table", "SSE request must return an event count")
     equal(result.events, #events)
     if provider == "anthropic" then
       equal(events[2].data.delta.text, "Hello")
@@ -439,6 +455,7 @@ test("curl receives neither key nor source in argv or inherited environment", fu
   vim.system = original
   assert(not err, err)
   assert(seen)
+  assert(type(response) == "table", "inspect fixture must return a response")
   equal(response.body.text, "PRIVATE_SOURCE")
 end)
 

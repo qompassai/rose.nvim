@@ -38,16 +38,19 @@ if server ~= "" and vim.fn.executable(server) == 1 then
   check(
     vim.wait(20000, function()
       local client = vim.lsp.get_client_by_id(id)
-      return client and client.initialized and #vim.diagnostic.get(0) > 0
+      return client ~= nil and client.initialized == true and #vim.diagnostic.get(0) > 0
     end, 20),
     "expected actual LSP diagnostic completion"
   )
   local diagnostics = tools.call("editor_diagnostics", {})
+  assert(type(diagnostics) == "table", "editor_diagnostics must return a result")
+  assert(type(diagnostics.diagnostics) == "table", "diagnostics must include diagnostic items")
   check(
     diagnostics.status == "failed" and #diagnostics.diagnostics > 0 and not diagnostics.verified,
     diagnostics
   )
   local symbols = tools.call("editor_symbols", { timeout = 10000 })
+  assert(type(symbols) == "table", "editor_symbols must return a result")
   check(symbols.status == "ok", symbols)
   local found = false
   for _, client in ipairs(symbols.clients) do
@@ -59,13 +62,14 @@ if server ~= "" and vim.fn.executable(server) == 1 then
   end
   check(found, symbols)
   local refs = tools.call("editor_references", { line = 2, column = 5, timeout = 10000 })
+  assert(type(refs) == "table", "editor_references must return a result")
   check(refs.status == "ok", refs)
   local references = 0
   for _, client in ipairs(refs.clients) do
     references = references + #(client.references or {})
   end
   check(references >= 2, refs)
-  vim.lsp.get_client_by_id(id):stop(true)
+  assert(vim.lsp.get_client_by_id(id), "live LSP client must still be registered"):stop(true)
   vim.wait(1000, function()
     return vim.lsp.get_client_by_id(id) == nil
   end, 10)
@@ -117,12 +121,14 @@ if ruff ~= "" and vim.fn.executable(ruff) == 1 and diver then
   package.loaded.linters = runner
   tools.setup({ workspace = root, trusted = true, diver = { path = diver } })
   local bad = tools.call("editor_lint", { timeout = 5000 })
+  assert(type(bad) == "table", "editor_lint must return a result")
   check(bad.status == "failed" and not bad.verified, bad)
   check(#bad.linters[1].diagnostics > 0 and bad.linters[1].exit_code == 1, bad)
   check(bad.linters[1].diagnostics[1].code == "F401", bad)
   -- Stdin checks intentionally verify the modified buffer, without saving it.
   vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'print("clean")' })
   local clean = tools.call("editor_lint", { timeout = 5000 })
+  assert(type(clean) == "table", "editor_lint must return a result")
   check(clean.status == "ok" and clean.verified, clean)
   check(clean.linters[1].exit_code == 0 and #clean.linters[1].diagnostics == 0, clean)
   check(vim.bo.modified, "lint must not save the edited buffer")

@@ -48,7 +48,7 @@ M.get_api_key = function(env_var, prompt_message)
     if key and key ~= "" then
       vim.cmd(string.format([[let $%s = "%s"]], env_var, key))
     else
-      vim.api.nvim_err_writeln("API key not provided for " .. prompt_message)
+      vim.notify("API key not provided for " .. prompt_message, vim.log.levels.ERROR)
       return nil
     end
   end
@@ -59,7 +59,7 @@ end
 ---@param events string|table Events to listen to
 ---@param buffers table|nil Buffers to listen to (nil for all buffers)
 ---@param callback function Callback to call
----@param gid number Augroup id
+---@param gid integer Augroup id
 function M.autocmd(events, buffers, callback, gid)
   if buffers then
     for _, buf in ipairs(buffers) do
@@ -105,14 +105,14 @@ end
 -- Create a new augroup with a unique name.
 ---@param name string # name of the augroup
 ---@param opts table | nil # options for the augroup
----@return number # returns augroup id
+---@return integer # returns augroup id
 M.create_augroup = function(name, opts)
   return vim.api.nvim_create_augroup(name .. "_" .. M.uuid(), opts or { clear = true })
 end
 
 -- Find the last line with content in a buffer.
----@param buf number # buffer number
----@return number # returns the first line with content of specified buffer
+---@param buf integer? # buffer number
+---@return integer # returns the first line with content of specified buffer
 M.last_content_line = function(buf)
   buf = buf or vim.api.nvim_get_current_buf()
   -- go from end and return number of last nonwhitespace line
@@ -128,9 +128,9 @@ M.last_content_line = function(buf)
 end
 
 -- Move the cursor to a specific line in a buffer and window.
----@param line number # line number
----@param buf number # buffer number
----@param win number | nil # window number
+---@param line integer # line number
+---@param buf integer # buffer number
+---@param win integer | nil # window number
 M.cursor_to_line = function(line, buf, win)
   -- don't manipulate cursor if user is elsewhere
   if buf ~= vim.api.nvim_get_current_buf() then
@@ -164,7 +164,7 @@ end
 
 -- Get the buffer number for a file with a given name.
 ---@param file_name string # name of the file for which to get buffer
----@return number | nil
+---@return integer | nil
 M.get_buffer = function(file_name)
   for _, b in ipairs(vim.api.nvim_list_bufs()) do
     if vim.api.nvim_buf_is_valid(b) then
@@ -177,7 +177,7 @@ M.get_buffer = function(file_name)
 end
 
 -- Join the current change with the previous one in the undo history.
----@param buf number # buffer number
+---@param buf integer # buffer number
 M.undojoin = function(buf)
   if not buf or not vim.api.nvim_buf_is_loaded(buf) then
     return
@@ -192,10 +192,11 @@ M.undojoin = function(buf)
 end
 
 -- Replace a key in a template string with a given value.
----@param template string # The template string
+---@generic T: string|nil
+---@param template T # The template string
 ---@param key string # The key to replace
 ---@param value string|table # The value to replace the key with
----@return string|nil # The rendered template or nil if input is nil
+---@return T # The rendered template or nil if input is nil
 M.template_replace = function(template, key, value)
   if template == nil then
     return nil
@@ -216,9 +217,10 @@ M.template_replace = function(template, key, value)
 end
 
 -- Render a template by replacing multiple keys with their corresponding values.
----@param template string | nil # template string
+---@generic T: string|nil
+---@param template T # template string
 ---@param key_value_pairs table # table with key value pairs
----@return string | nil # returns rendered template with keys replaced by values from key_value_pairs
+---@return T # rendered template; nil only when the input is nil
 M.template_render_from_list = function(template, key_value_pairs)
   if template == nil then
     return nil
@@ -231,14 +233,15 @@ M.template_render_from_list = function(template, key_value_pairs)
   return template
 end
 
----@param template string|nil # The template string
----@param command string # The command
----@param selection string # The selected text
----@param filetype string # The file type
+---@generic T: string|nil
+---@param template T # The template string
+---@param command string? # The command
+---@param selection string? # The selected text
+---@param filetype string? # The file type
 ---@param filename string # The file name
----@param filecontent string # The file content
----@param multifilecontent string # The content of multiple files
----@return string|nil # The rendered template or nil if input is nil
+---@param filecontent string? # The file content
+---@param multifilecontent string? # The content of multiple files
+---@return T # The rendered template or nil if input is nil
 M.template_render = function(template, command, selection, filetype, filename, filecontent, multifilecontent)
   local key_value_pairs = {
     ["{{command}}"] = command,
@@ -292,7 +295,7 @@ M.prepare_payload = function(messages, model_name, params)
 end
 
 -- Check if a buffer is a chat file.
----@param buf number # buffer number
+---@param buf integer # buffer number
 ---@param file_name string # name of the file
 ---@param chat_dir string # directory path for chat files
 ---@return boolean
@@ -331,8 +334,8 @@ end
 
 -- Append selected text to a target buffer.
 ---@param params table # table with command args
----@param origin_buf number # selection origin buffer
----@param target_buf number # selection target buffer
+---@param origin_buf integer # selection origin buffer
+---@param target_buf integer # selection target buffer
 ---@param template_selection string # template for formatting the selection
 M.append_selection = function(params, origin_buf, target_buf, template_selection)
   -- prepare selection

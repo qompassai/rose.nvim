@@ -1,19 +1,19 @@
 --/qompassai/rose.nvim/lua/chat_handler.lua
 -- --------------------------------------------
 -- Copyright (C) 2025 Qompass AI, All rights reserved
-local utils = require("rose.utils")
-local futils = require("rose.file_utils")
-local logger = require("rose.logger")
 local Pool = require("rose.pool")
 local Queries = require("rose.queries")
 local State = require("rose.state")
 local chatutils = require("rose.chat_utils")
+local futils = require("rose.file_utils")
+local logger = require("rose.logger")
 local ui = require("rose.ui")
+local utils = require("rose.utils")
 local init_provider = require("rose.provider").init_provider
-local Spinner = require("rose.spinner")
 local Job = require("plenary.job")
-local pft = require("plenary.filetype")
 local ResponseHandler = require("rose.response_handler")
+local Spinner = require("rose.spinner")
+local pft = require("plenary.filetype")
 
 local ChatHandler = {}
 
@@ -72,6 +72,9 @@ function ChatHandler:set_provider(selected_prov, is_chat)
   self:prepare_commands()
 end
 
+--- Retrieves the current provider for chat or command.
+---@param is_chat boolean True for chat provider, false for command provider.
+---@return table | nil Provider table or nil if not found.
 function ChatHandler:get_provider(is_chat)
   local current_prov = self.current_provider[is_chat and "chat" or "command"]
   if not current_prov then
@@ -86,9 +89,6 @@ function ChatHandler:get_provider(is_chat)
   return current_prov
 end
 
---- Retrieves the current provider for chat or command.
----@param is_chat boolean True for chat provider, false for command provider.
----@return table | nil Provider table or nil if not found.
 function ChatHandler:buf_handler()
   local gid = utils.create_augroup("RoseBufHandler", { clear = true })
 
@@ -171,7 +171,7 @@ function ChatHandler:prep_chat(buf, file_name)
   self.state:refresh(self.available_providers, self.available_models)
 end
 
----@param buf number Buffer number.
+---@param buf integer Buffer number.
 ---@param file_name string Name of the context file.
 function ChatHandler:prep_context(buf, file_name)
   if not utils.ends_with(file_name, ".rose.md") then
@@ -290,13 +290,13 @@ function ChatHandler:prepare_commands()
 end
 
 function ChatHandler:addCommand(command, cmd)
-  self[command] = function(self, params)
+  self[command] = function(_, params)
     cmd(params)
   end
 end
 
 --- Stops all ongoing processes by killing associated jobs.
----@param signal number | nil Signal to send to the processes.
+---@param signal integer | nil Signal to send to the processes.
 function ChatHandler:stop(signal)
   if self.pool:is_empty() then
     return
@@ -360,7 +360,7 @@ end
 ---@param target number Buffer target.
 ---@param kind number Kind of toggle.
 ---@param toggle boolean Whether to toggle the buffer.
----@return number Buffer number.
+---@return integer Buffer number.
 function ChatHandler:open_buf(file_name, target, kind, toggle)
   target = target or ui.BufTarget.current
 
@@ -470,8 +470,8 @@ end
 --- Creates a new chat file.
 ---@param params table Parameters for creating a new chat.
 ---@param toggle boolean Whether to toggle the chat buffer.
----@param chat_prompt string Optional chat prompt.
----@return number # buffer number
+---@param chat_prompt string? Optional chat prompt.
+---@return integer # buffer number
 function ChatHandler:_new_chat(params, toggle, chat_prompt)
   self:toggle_close(self._toggle_kind.popup)
 
@@ -520,8 +520,8 @@ end
 
 --- Creates a new chat.
 ---@param params table Parameters for creating a new chat.
----@param chat_prompt string Optional chat prompt.
----@return number # buffer number.
+---@param chat_prompt string? Optional chat prompt.
+---@return integer # buffer number.
 function ChatHandler:chat_new(params, chat_prompt)
   -- if chat toggle is open, close it and start a new one
   if self:toggle_close(self._toggle_kind.chat) then
@@ -575,7 +575,7 @@ function ChatHandler:chat_paste(params)
   local cbuf = vim.api.nvim_get_current_buf()
 
   local last_chat_file = self.state:get_last_chat()
-  if last_chat_file and vim.fn.filereadable(last_chat_file) ~= 1 then
+  if not last_chat_file or vim.fn.filereadable(last_chat_file) ~= 1 then
     -- skip rest since new chat will handle snippet on it's own
     self:chat_new(params)
     return
@@ -940,7 +940,10 @@ function ChatHandler:chat_finder()
     })
     return
   else
-    local chat_files = scan.scan_dir(self.options.chat_dir, { depth = 1, search_pattern = "%d+%.md$" })
+    local chat_files = require("plenary.scandir").scan_dir(
+      self.options.chat_dir,
+      { depth = 1, search_pattern = "%d+%.md$" }
+    )
     vim.ui.select(chat_files, {
       prompt = "Select your chat file:",
       format_item = function(item)
@@ -1012,7 +1015,9 @@ function ChatHandler:provider(params)
       fzf_opts = self.options.fzf_lua_opts,
       actions = {
         ["default"] = function(selected)
-          self:switch_provider(selected[1], is_chat)
+          if selected[1] then
+            self:switch_provider(selected[1], is_chat)
+          end
         end,
       },
     })
@@ -1020,7 +1025,9 @@ function ChatHandler:provider(params)
     vim.ui.select(self.available_providers, {
       prompt = "Select your provider:",
     }, function(selected_prov)
-      self:switch_provider(selected_prov, is_chat)
+      if selected_prov then
+        self:switch_provider(selected_prov, is_chat)
+      end
     end)
   end
 end
@@ -1052,6 +1059,9 @@ function ChatHandler:model(params)
   local file_name = vim.api.nvim_buf_get_name(buf)
   local is_chat = utils.is_chat(buf, file_name, self.options.chat_dir)
   local prov = self:get_provider(is_chat)
+  if not prov then
+    return
+  end
   local model_name = string.gsub(params.args, "^%s*(.-)%s*$", "%1")
   local has_fzf, fzf_lua = pcall(require, "fzf-lua")
   local fetch_online = self.options.online_model_selection
@@ -1077,7 +1087,9 @@ function ChatHandler:model(params)
     vim.ui.select(prov:get_available_models(fetch_online), {
       prompt = "Select your model:",
     }, function(selected_model)
-      self:switch_model(is_chat, selected_model, prov)
+      if selected_model then
+        self:switch_model(is_chat, selected_model, prov)
+      end
     end)
   end
 end
@@ -1109,9 +1121,9 @@ end
 
 --- Prompts the user to send a model request.
 ---@param params table Parameters for prompting.
----@param target table | number Buffer target.
+---@param target table | integer | fun(): table Buffer target.
 ---@param model_obj table Model information.
----@param prompt string Optional prompt for user input.
+---@param prompt string? Optional prompt for user input.
 ---@param template string Template for generating the user prompt.
 ---@param reset_history boolean Whether to reset history.
 function ChatHandler:prompt(params, target, model_obj, prompt, template, reset_history)

@@ -37,7 +37,7 @@ end
 --- @param available_models table
 function State:load_models(provider, model_type, available_models)
   if available_models[provider] == nil then
-    vim.api.nvim_err_writeln("Provider '" .. provider .. "' not found in available_models.")
+    vim.notify("Provider '" .. provider .. "' not found in available_models.", vim.log.levels.ERROR)
     return
   end
   local state_model = self.file_state and self.file_state[provider] and self.file_state[provider][model_type]

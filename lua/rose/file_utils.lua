@@ -2,7 +2,6 @@
 -- --------------------------------------------
 -- Copyright (C) 2025 Qompass AI, All rights reserved
 local logger = require("rose.logger")
-local utils = require("rose.utils")
 local M = {}
 ---@param file_path string
 ---@return table | nil
@@ -16,13 +15,19 @@ M.file_to_table = function(file_path)
   file:close()
   if not content or content == "" then
     logger.error(
-      "Failed to read content from file: " .. file_path .. (content_err and ("\nError: " .. content_err) or "")
+      "Failed to read content from file: "
+        .. file_path
+        .. (content_err and ("\nError: " .. content_err) or "")
     )
     return nil
   end
   local decode_status, result = pcall(vim.json.decode, content)
   if not decode_status then
     logger.error("JSON decoding failed for file: " .. file_path .. "\nError: " .. result)
+    return nil
+  end
+  if type(result) ~= "table" then
+    logger.error("JSON file must contain an object or array: " .. file_path)
     return nil
   end
   return result
@@ -42,15 +47,12 @@ M.table_to_file = function(tbl, file_path)
     file:close()
     return
   end
-  local write_ok, write_err = pcall(function()
-    file:write(json_str)
-  end)
-  if not write_ok then
-    logger.error(string.format("Failed to write data to file: %s", write_err))
-    file:close()
-    return
+  local write_ok, written, write_err = pcall(file.write, file, json_str)
+  local closed, close_err = file:close()
+  if not write_ok or not written or not closed then
+    local err = write_ok and (write_err or close_err) or written
+    logger.error(string.format("Failed to write data to file: %s", tostring(err)))
   end
-  file:close()
 end
 
 ---@return string
@@ -76,8 +78,10 @@ M.find_repo_instructions = function()
   end
   local instruct_file = git_root .. "/.rose.md"
   if vim.fn.filereadable(instruct_file) == 1 then
-    local lines = vim.fn.readfile(instruct_file)
-    return table.concat(lines, "\n")
+    local ok, lines = pcall(vim.fn.readfile, instruct_file)
+    if ok then
+      return table.concat(lines, "\n")
+    end
   end
   return ""
 end
@@ -92,7 +96,7 @@ M.delete_file = function(file, target_dir)
     logger.error("File '" .. file .. "' not in target directory.")
     return
   end
-  utils.delete_buffer(file)
+  require("rose.utils").delete_buffer(file)
   if not os.remove(file) then
     logger.error("Error: Failed to delete file '" .. file .. "'.")
   end
@@ -106,7 +110,7 @@ M.read_file = function(path)
   end
   local content = file:read("*a")
   file:close()
-  return content
+  return content or ""
 end
 --- @param path string
 --- @param content string
@@ -116,8 +120,8 @@ M.write_file = function(path, content)
   if not file then
     return false
   end
-  file:write(content)
-  file:close()
-  return true
+  local written = file:write(content)
+  local closed = file:close()
+  return written ~= nil and closed ~= nil
 end
 return M

@@ -1,11 +1,8 @@
 -- Historical configuration, loaded only by explicit legacy=true.
 -- --------------------------------------------
 -- Copyright (C) 2025 Qompass AI, All rights reserved
----@class RoseOptions
----@field chat_dir string
----@field state_dir string
-local utils = require("rose.utils")
 local ChatHandler = require("rose.chat_handler")
+local utils = require("rose.utils")
 local init_provider = require("rose.provider").init_provider
 local M = {
   api = require("rose.api"),
@@ -38,7 +35,10 @@ local topic_prompt = [[
 Summarize the topic of our conversation above
 in three or four words. Respond only with those words.
 ]]
-M.options = {
+---@class RoseOptions
+---@field chat_dir string
+---@field state_dir string
+local defaults = {
   providers = {
     pplx = {
       api_key = require("rose.api").pkey("api/perplexity"),
@@ -337,62 +337,86 @@ function M.setup(user_opts)
   if vim.fn.has("nvim-0.10") == 0 then
     return vim.notify("🌹 rose.nvim requires Neovim >= 0.10", vim.log.levels.ERROR)
   end
-  M.options = vim.tbl_deep_extend("force", M.options, user_opts or {})
-end
-math.randomseed(os.time())
-local valid_provider_names = vim.tbl_keys(defaults.providers)
-if not utils.has_valid_key(opts.providers, valid_provider_names) then
-  return vim.notify("Invalid provider configuration", vim.log.levels.ERROR)
-end
-M.options = vim.tbl_deep_extend("force", {}, defaults, opts or {})
-M.providers = M.merge_providers(defaults.providers, opts.providers)
-M.options.providers = nil
-M.hooks = M.options.hooks
-M.options.hooks = nil
-local chat_dir_stat = vim.uv.fs_lstat(M.options.chat_dir)
-if chat_dir_stat and chat_dir_stat.type == "link" then
-  M.options.chat_dir = vim.fn.resolve(M.options.chat_dir)
-end
-local state_dir_stat = vim.uv.fs_lstat(M.options.state_dir)
-if state_dir_stat and state_dir_stat.type == "link" then
-  M.options.state_dir = vim.fn.resolve(M.options.state_dir)
-end
-for k, v in pairs(M.options) do
-  if type(v) == "string" and k:match("_dir$") then
-    local dir = v:gsub("/$", "")
-    M.options[k] = dir
-    vim.fn.mkdir(dir, "p")
+  local opts = user_opts or {}
+  local valid_provider_names = vim.tbl_keys(defaults.providers)
+  if
+    type(opts) ~= "table"
+    or type(opts.providers) ~= "table"
+    or not utils.has_valid_key(opts.providers, valid_provider_names)
+  then
+    return vim.notify("Invalid provider configuration", vim.log.levels.ERROR)
   end
+  for name, provider in pairs(opts.providers) do
+    if not defaults.providers[name] or type(provider) ~= "table" then
+      return vim.notify("Invalid provider configuration: " .. tostring(name), vim.log.levels.ERROR)
+    end
+  end
+  math.randomseed(os.time())
+  local options = vim.tbl_deep_extend("force", {}, defaults, opts)
+  if type(options.chat_dir) ~= "string" or type(options.state_dir) ~= "string" then
+    return vim.notify("Chat and state directories must be paths", vim.log.levels.ERROR)
+  end
+  M.options = options
+  M.providers = M.merge_providers(defaults.providers, opts.providers)
+  M.options.providers = nil
+  M.hooks = M.options.hooks
+  M.options.hooks = nil
+  local chat_dir_stat = vim.uv.fs_lstat(M.options.chat_dir)
+  if chat_dir_stat and chat_dir_stat.type == "link" then
+    M.options.chat_dir = vim.fn.resolve(M.options.chat_dir)
+  end
+  local state_dir_stat = vim.uv.fs_lstat(M.options.state_dir)
+  if state_dir_stat and state_dir_stat.type == "link" then
+    M.options.state_dir = vim.fn.resolve(M.options.state_dir)
+  end
+  for k, v in pairs(M.options) do
+    if type(v) == "string" and k:match("_dir$") then
+      local dir = v:gsub("/$", "")
+      M.options[k] = dir
+      local created, err = pcall(vim.fn.mkdir, dir, "p")
+      if not created then
+        return vim.notify(
+          "Unable to create directory " .. dir .. ": " .. tostring(err),
+          vim.log.levels.ERROR
+        )
+      end
+    end
+  end
+  M.available_providers = vim.tbl_keys(M.providers)
+  local available_models = {}
+  for _, prov_name in ipairs(M.available_providers) do
+    local _prov =
+      init_provider(prov_name, M.providers[prov_name].endpoint, M.providers[prov_name].api_key)
+    if type(_prov.get_available_models) ~= "function" then
+      return vim.notify("Provider unavailable: " .. prov_name, vim.log.levels.ERROR)
+    end
+    available_models[prov_name] = _prov:get_available_models(false)
+  end
+  M.available_models = available_models
+  table.sort(M.available_providers)
+  M.register_hooks(M.hooks, M.options)
+  M.cmd = {
+    ChatFinder = "chat_finder",
+    ChatStop = "stop",
+    ChatNew = "chat_new",
+    ChatToggle = "chat_toggle",
+    ChatPaste = "chat_paste",
+    ChatDelete = "chat_delete",
+    ChatResponde = "chat_respond",
+    Context = "context",
+    Model = "model",
+    Provider = "provider",
+    Retry = "retry",
+  }
+  M.chat_handler =
+    ChatHandler:new(M.options, M.providers, M.available_providers, M.available_models, M.cmd)
+  M.chat_handler:prepare_commands()
+  M.add_default_commands(M.cmd, M.hooks, M.options)
+  M.chat_handler:buf_handler()
+  M.loaded = true
 end
-M.available_providers = vim.tbl_keys(M.providers)
-local available_models = {}
-for _, prov_name in ipairs(M.available_providers) do
-  local _prov = init_provider(prov_name, M.providers[prov_name].endpoint, M.providers[prov_name].api_key)
-  available_models[prov_name] = _prov:get_available_models(false)
-end
-M.available_models = available_models
-table.sort(M.available_providers)
-M.register_hooks(M.hooks, M.options)
-M.cmd = {
-  ChatFinder = "chat_finder",
-  ChatStop = "stop",
-  ChatNew = "chat_new",
-  ChatToggle = "chat_toggle",
-  ChatPaste = "chat_paste",
-  ChatDelete = "chat_delete",
-  ChatResponde = "chat_respond",
-  Context = "context",
-  Model = "model",
-  Provider = "provider",
-  Retry = "retry",
-}
-M.chat_handler = ChatHandler:new(M.options, M.providers, M.available_providers, M.available_models, M.cmd)
-M.chat_handler:prepare_commands()
-M.add_default_commands(M.cmd, M.hooks, M.options)
-M.chat_handler:buf_handler()
-M.loaded = true
 M.Prompt = function(params, target, model_obj, prompt, template)
-  M.chat_handler:prompt(params, target, model_obj, prompt, template)
+  M.chat_handler:prompt(params, target, model_obj, prompt, template, true)
 end
 M.ChatNew = function(params, chat_prompt)
   M.chat_handler:chat_new(params, chat_prompt)

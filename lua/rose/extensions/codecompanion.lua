@@ -45,8 +45,11 @@ end
 local tool_schema = {
     name = "mcp",
     cmds = {
-        function(self, action, input, output_handler)
+        function(self, action, _input, output_handler)
             local hub = require("rose").get_hub_instance()
+            if not hub then
+                return { status = "error", data = "Rose MCP Hub not initialized" }
+            end
             local params = parse_params(action)
             if #params.errors > 0 then
                 return {

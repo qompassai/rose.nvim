@@ -3,12 +3,12 @@
 -- Copyright (C) 2025 Qompass AI, All rights reserved
 local utils = require("rose.utils")
 ---@class ResponseHandler
----@field buffer number
----@field window number
----@field ns_id number
----@field ex_id number
----@field first_line number
----@field finished_lines number
+---@field buffer integer
+---@field window integer
+---@field ns_id integer
+---@field ex_id integer
+---@field first_line integer
+---@field finished_lines integer
 ---@field response string
 ---@field prefix string
 ---@field cursor boolean
@@ -17,9 +17,9 @@ local utils = require("rose.utils")
 local ResponseHandler = {}
 ResponseHandler.__index = ResponseHandler
 ---@param queries table
----@param buffer number|nil
----@param window number|nil
----@param line number|nil
+---@param buffer integer|nil
+---@param window integer|nil
+---@param line integer|nil
 ---@param first_undojoin boolean|nil
 ---@param prefix string|nil
 ---@param cursor boolean
@@ -30,7 +30,8 @@ function ResponseHandler:new(queries, buffer, window, line, first_undojoin, pref
   instance.window = window or vim.api.nvim_get_current_win()
   instance.prefix = prefix or ""
   instance.cursor = cursor or false
-  instance.first_line = line or (instance.window and vim.api.nvim_win_get_cursor(instance.window)[1] - 1 or 0)
+  instance.first_line = line
+    or (instance.window and vim.api.nvim_win_get_cursor(instance.window)[1] - 1 or 0)
   instance.finished_lines = 0
   instance.response = ""
   instance.queries = queries
@@ -38,17 +39,23 @@ function ResponseHandler:new(queries, buffer, window, line, first_undojoin, pref
   instance.hl_handler_group = "RoseHandlerStandout"
   vim.api.nvim_set_hl(0, instance.hl_handler_group, { link = "CursorLine" })
   instance.ns_id = vim.api.nvim_create_namespace("RoseHandler_" .. utils.uuid())
-  instance.ex_id = vim.api.nvim_buf_set_extmark(instance.buffer, instance.ns_id, instance.first_line, 0, {
-    strict = false,
-    right_gravity = false,
-  })
+  instance.ex_id =
+    vim.api.nvim_buf_set_extmark(instance.buffer, instance.ns_id, instance.first_line, 0, {
+      strict = false,
+      right_gravity = false,
+    })
   return instance
 end
----@param qid any
+---@param qid string
 ---@param chunk string
 function ResponseHandler:handle_chunk(qid, chunk)
   local qt = self.queries:get(qid)
   if not qt or not vim.api.nvim_buf_is_valid(self.buffer) then
+    return
+  end
+  local position = vim.api.nvim_buf_get_extmark_by_id(self.buffer, self.ns_id, self.ex_id, {})
+  local first_line = position[1]
+  if not first_line then
     return
   end
   if not self.skip_first_undojoin then
@@ -57,7 +64,7 @@ function ResponseHandler:handle_chunk(qid, chunk)
   self.skip_first_undojoin = false
   qt.ns_id = qt.ns_id or self.ns_id
   qt.ex_id = qt.ex_id or self.ex_id
-  self.first_line = vim.api.nvim_buf_get_extmark_by_id(self.buffer, self.ns_id, self.ex_id, {})[1]
+  self.first_line = first_line
   local line_count = #vim.split(self.response, "\n")
   vim.api.nvim_buf_set_lines(
     self.buffer,
@@ -97,7 +104,12 @@ function ResponseHandler:update_highlighting(qt)
   local lines = vim.split(self.response, "\n")
   local new_finished_lines = math.max(0, #lines - 1)
   for i = self.finished_lines, new_finished_lines do
-    vim.api.nvim_buf_add_highlight(self.buffer, qt.ns_id, self.hl_handler_group, self.first_line + i, 0, -1)
+    vim.api.nvim_buf_set_extmark(self.buffer, qt.ns_id, self.first_line + i, 0, {
+      end_row = self.first_line + i + 1,
+      end_col = 0,
+      hl_group = self.hl_handler_group,
+      strict = false,
+    })
   end
   self.finished_lines = new_finished_lines
 end

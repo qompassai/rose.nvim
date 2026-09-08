@@ -4,7 +4,7 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .PHONY: test test-core test-tooling test-dap test-hub test-providers test-speech test-webui \
-	test-live test-legacy lint format help clean
+	test-live test-legacy test-nil-safety test-legacy-nil-safety lint typecheck typecheck-all format help clean
 
 TEST_DIR := tests
 PLUGIN_DIR := lua
@@ -15,6 +15,7 @@ PYTHON ?= python3
 DIVER_ROOT ?=
 LUACHECK ?= luacheck
 STYLUA ?= stylua
+LUALS ?= lua-language-server
 CLANG_FORMAT ?= clang-format
 CMAKE ?= cmake
 
@@ -26,7 +27,20 @@ help:
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-test: test-core test-tooling test-dap test-hub test-providers test-speech test-webui ## Run native offline tests without Neovim plugins
+test: test-core test-tooling test-dap test-hub test-providers test-speech test-webui test-nil-safety test-legacy-nil-safety ## Run offline tests with no installed Neovim plugins
+
+test-nil-safety: ## Offline missing-file, nullable handle and protocol regressions
+	@$(NVIM) --headless -u NONE -l $(TEST_DIR)/nil_safety.lua
+	@$(PYTHON) -m unittest discover -s $(TEST_DIR) -p test_check_lua.py -v
+
+test-legacy-nil-safety: ## Isolated legacy nil regressions with stubbed plugin dependencies
+	@$(NVIM) --headless -u NONE -l $(TEST_DIR)/legacy_nil_safety.lua
+
+typecheck: ## Strict LuaLS gate for all runtime Lua (includes legacy); no addons downloaded
+	@NVIM="$(NVIM)" LUALS="$(LUALS)" $(PYTHON) scripts/check_lua.py
+
+typecheck-all: ## Strict whole-repository LuaLS gate, including tests and build scripts
+	@NVIM="$(NVIM)" LUALS="$(LUALS)" $(PYTHON) scripts/check_lua.py --scope all
 
 test-core: ## Native setup, HTTP, MCP, agent and validation tests
 	@$(NVIM) --headless -u NONE -l $(TEST_DIR)/core.lua
@@ -60,7 +74,8 @@ lint:
 	@$(LUACHECK) $(PLUGIN_DIR)
 
 format:
-	@$(STYLUA) --config-path .stylua.toml lua/rose/native lua/rose/tooling lua/rose/providers \
+	@$(STYLUA) --search-parent-directories --respect-ignores --sort-requires --syntax=LuaJIT \
+		--config-path .stylua.toml lua/rose/native lua/rose/tooling lua/rose/providers \
 		lua/rose/speech lua/rose/webui lua/rose/tools.lua lua/rose/debug.lua lua/rose/hub.lua
 
 clean:

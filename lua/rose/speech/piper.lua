@@ -43,7 +43,9 @@ function M.speak(argv, text, path, callback)
   assert(type(path) == "string", "path must be a string")
   assert(path:sub(1, 1) == "/", "path must be absolute")
   assert(type(callback) == "function", "callback must be a function")
-  local token, handle, done, timer = {}, nil, false, nil
+  local token, done, timer = {}, false, nil
+  ---@type vim.SystemObj?
+  local handle
   local function finish(err, result)
     if done then
       return
@@ -64,7 +66,14 @@ function M.speak(argv, text, path, callback)
       return
     end
     finish("cancelled")
-    pcall(handle.kill, handle, 9)
+    if handle then
+      pcall(handle.kill, handle, 9)
+    end
+  end
+  timer = uv.new_timer()
+  if not timer then
+    finish("could not create piper timeout timer")
+    return token
   end
   local command = vim.deepcopy(argv)
   command[#command + 1] = "--output_file"
@@ -91,11 +100,14 @@ function M.speak(argv, text, path, callback)
     return token
   end
   handle = result
-  timer = uv.new_timer()
-  timer:start(M.timeout_ms, 0, function()
-    finish("piper exceeded the time limit")
-    pcall(handle.kill, handle, 9)
-  end)
+  if timer then
+    timer:start(M.timeout_ms, 0, function()
+      finish("piper exceeded the time limit")
+      if handle then
+        pcall(handle.kill, handle, 9)
+      end
+    end)
+  end
   return token
 end
 

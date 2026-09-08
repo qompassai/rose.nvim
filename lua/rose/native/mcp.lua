@@ -62,6 +62,10 @@ function Client:request(method, params, callback, timeout)
   local id = self.sequence
   local uv = vim.uv or vim.loop
   local timer = uv.new_timer()
+  if not timer then
+    defer(callback, "could not create MCP request timer")
+    return token
+  end
   self.pending[id] = { callback = callback, timer = timer }
   function token.cancel()
     if not self.pending[id] then
@@ -199,6 +203,10 @@ function Client:close(reason)
     pcall(self.process.kill, self.process, 15)
     local uv = vim.uv or vim.loop
     self.kill_timer = uv.new_timer()
+    if not self.kill_timer then
+      pcall(self.process.kill, self.process, 9)
+      return
+    end
     self.kill_timer:start(500, 0, function()
       if not self.exited then
         pcall(self.process.kill, self.process, 9)
@@ -294,6 +302,10 @@ function M.start(opts, callback)
       stop_timer(self.kill_timer)
       self.kill_timer = nil
       self:close("MCP process exited (" .. result.code .. "): " .. self.stderr)
+      if self.on_exit then
+        self.on_exit()
+        self.on_exit = nil
+      end
     end)
   end)
   if not ok then

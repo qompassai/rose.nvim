@@ -176,9 +176,12 @@ local function respond(state, client, status, content_type, body)
   client.responded = true
   state.requests_served = state.requests_served + 1
   local data = response_bytes(status, content_type, body)
-  client.handle:write(data, function()
+  local written = client.handle:write(data, function()
     client_close(state, client)
   end)
+  if not written then
+    client_close(state, client)
+  end
 end
 
 local function respond_json(state, client, status, payload)
@@ -280,6 +283,8 @@ local function body_length(request, max_request_bytes)
     return nil, 400, "invalid Content-Length"
   end
   local length = tonumber(header)
+  -- The decimal-only, bounded header above is an exactly representable integer.
+  ---@cast length integer
   if length > max_request_bytes then
     return nil, 413, "request body exceeds webui.max_request_bytes"
   end
@@ -815,6 +820,9 @@ local function server_on_connection(state, accept_error)
     return
   end
   local handle = uv.new_tcp()
+  if not handle then
+    return
+  end
   local accepted = state.server:accept(handle)
   if not accepted then
     handle:close()
@@ -828,16 +836,24 @@ local function server_on_connection(state, accept_error)
   if state.client_count >= state.config.max_clients then
     local refusal = '{"error":"too many clients","status":503}'
     local body = response_bytes(503, content_types.json, refusal)
-    handle:write(body, function()
+    local written = handle:write(body, function()
       handle:close()
     end)
+    if not written then
+      handle:close()
+    end
+    return
+  end
+  local timer = uv.new_timer()
+  if not timer then
+    handle:close()
     return
   end
   local client = {
     handle = handle,
     chunks = {},
     bytes = 0,
-    timer = uv.new_timer(),
+    timer = timer,
     dispatched = false,
     responded = false,
     closed = false,
@@ -846,13 +862,16 @@ local function server_on_connection(state, accept_error)
   state.client_count = state.client_count + 1
   assert(state.client_count <= state.config.max_clients)
   client_arm_timer(state, client, state.config.idle_timeout_ms, 408, "idle timeout")
-  handle:read_start(function(read_error, chunk)
+  local reading = handle:read_start(function(read_error, chunk)
     if read_error or chunk == nil then
       client_close(state, client)
       return
     end
     client_on_data(state, client, chunk)
   end)
+  if not reading then
+    client_close(state, client)
+  end
 end
 
 --- Start listening. Idempotent: a running server is returned unchanged.
@@ -867,6 +886,9 @@ function M.start(fullconfig)
   assert(host ~= nil)
   local page = require("rose.webui.page").html()
   local server = uv.new_tcp()
+  if not server then
+    return nil, "cannot create TCP listener"
+  end
   local bound, bind_error = server:bind(host, config.port)
   if not bound then
     server:close()
@@ -892,7 +914,10 @@ function M.start(fullconfig)
     return nil, "cannot listen on " .. host .. ": " .. tostring(listen_error)
   end
   local address = server:getsockname()
-  assert(address ~= nil)
+  if not address then
+    server:close()
+    return nil, "cannot get TCP listener address"
+  end
   assert(M.loopback_address(address.ip) ~= nil)
   state.port = address.port
   assert(state.port > 0)

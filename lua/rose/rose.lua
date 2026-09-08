@@ -29,7 +29,7 @@ function M.detect_platform()
   end
 end
 function M.rose_exists()
-  for name, path in pairs(M.install_paths) do
+  for _, path in pairs(M.install_paths) do
     local binary_name = "rose"
     if M.detect_platform() == "windows" then
       binary_name = binary_name .. ".exe"

@@ -3,9 +3,9 @@
 -- local engines (whisper.cpp, piper) run only when explicitly configured.
 -- There is no realtime or streaming audio: record, then transcribe; synthesize,
 -- then play. Every step has a byte, character or time limit.
+local audio = require("rose.speech.audio")
 local deliver = require("rose.speech.deliver")
 local http = require("rose.speech.http")
-local audio = require("rose.speech.audio")
 local piper = require("rose.speech.piper")
 local whisper = require("rose.speech.whisper")
 local M = { active = {} }
@@ -97,7 +97,7 @@ end
 function M.temp_dir()
   local dir = vim.fn.stdpath("cache") .. "/rose/speech"
   if vim.fn.isdirectory(dir) == 0 then
-    vim.fn.mkdir(dir, "p", 448)
+    vim.fn.mkdir(dir, "p", "0700")
   end
   assert(vim.fn.isdirectory(dir) == 1, "speech cache directory must exist")
   return dir

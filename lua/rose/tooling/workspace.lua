@@ -6,13 +6,16 @@ local state = { trusted = false, options = {}, max_bytes = 1024 * 1024 }
 
 function M.setup(opts)
   opts = opts or {}
-  local root = uv.fs_realpath(opts.workspace or uv.cwd())
-  assert(root and uv.fs_stat(root).type == "directory", "workspace must be an existing directory")
+  local path = opts.workspace or uv.cwd()
+  assert(path, "workspace is unavailable")
+  local root = uv.fs_realpath(path)
+  local stat = root and uv.fs_stat(root)
+  assert(root and stat and stat.type == "directory", "workspace must be an existing directory")
   state = {
     root = root:gsub("/+$", "") == "" and "/" or root:gsub("/+$", ""),
     trusted = opts.trusted == true,
     options = opts,
-    max_bytes = math.min(tonumber(opts.max_file_bytes) or 1024 * 1024, 16 * 1024 * 1024),
+    max_bytes = math.min(tonumber(opts.max_file_bytes) or (1024 * 1024), 16 * 1024 * 1024),
     observed_paths = {},
   }
   return state
@@ -60,7 +63,8 @@ function M.resolve(path)
       assert(M.contains(s.root, resolved), "path escapes workspace through a symlink")
       current = resolved
       if i < #parts then
-        assert(uv.fs_stat(current).type == "directory", "parent is not a directory")
+        local parent = uv.fs_stat(current)
+        assert(parent and parent.type == "directory", "parent is not a directory")
       end
     elseif err and not err:match("ENOENT") then
       error("cannot inspect path: " .. tostring(err))
@@ -255,11 +259,11 @@ function M.load(snapshot)
   if b and vim.bo[b].filetype ~= "" then
     return snapshot
   end
-  local content = not b and M.read_disk(snapshot.absolute) or nil
   local previous = vim.o.eventignore
   vim.o.eventignore = "all"
   local ok, err = pcall(function()
     if not b then
+      local content = M.read_disk(snapshot.absolute)
       b = M.buffers(snapshot.absolute)[1] or api.nvim_create_buf(false, false)
       if api.nvim_buf_get_name(b) == "" then
         api.nvim_buf_set_name(b, snapshot.absolute)

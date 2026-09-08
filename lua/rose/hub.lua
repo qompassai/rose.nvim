@@ -67,7 +67,8 @@ function M.setup(opts)
     "Hub workspace must be absolute"
   )
   local real = uv.fs_realpath(cfg.workspace)
-  assert(real and uv.fs_stat(real).type == "directory", "Hub workspace must exist")
+  local stat = real and uv.fs_stat(real)
+  assert(real and stat and stat.type == "directory", "Hub workspace must exist")
   -- Do not follow aliases silently: Python rechecks every component with NOFOLLOW.
   cfg.workspace = cfg.workspace:gsub("/+$", "")
   if cfg.workspace == "" then
@@ -103,6 +104,7 @@ local function config()
   if not options then
     M.setup()
   end
+  assert(options, "Hub setup must provide configuration")
   return options
 end
 
@@ -504,6 +506,10 @@ local function start(direction, spec, callback)
     job.spec = vim.deepcopy(spec)
     if cfg.timeout_ms > 0 then
       job.timer = uv.new_timer()
+      if not job.timer then
+        finish(job, "could not create Hub timeout timer")
+        return
+      end
       job.timer:start(cfg.timeout_ms, 0, vim.schedule_wrap(token.cancel))
     end
     job.state = direction == "paper" and "metadata" or "previewing"

@@ -145,13 +145,13 @@ local function check_speech(options)
   if recorder then
     vim.health.ok("speech recorder: " .. recorder[1])
   else
-    vim.health.warn(why)
+    vim.health.warn(why or "speech recorder unavailable")
   end
   local player, play_why = audio.detect(audio.players.wav, options.speech.play.cmd, "play")
   if player then
     vim.health.ok("speech player: " .. player[1])
   else
-    vim.health.warn(play_why)
+    vim.health.warn(play_why or "speech player unavailable")
   end
 end
 

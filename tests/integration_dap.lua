@@ -30,9 +30,13 @@ local function check(value, message)
 end
 debug.setup(config({ python, fake }))
 local result = debug.call({ action = "run", name = "probe" })
+assert(type(result) == "table", "DAP run must return a result")
 check(result.status == "ok", vim.inspect(result))
+assert(type(result.stopped) == "table", "successful DAP run must capture a stopped event")
 check(result.verified == false and result.stopped.reason == "breakpoint", "No false test claim")
+assert(type(result.stack) == "table", "successful DAP run must capture a stack trace")
 check(result.stack.stackFrames[1].name == "probe", "Stack trace captured")
+assert(type(result.scopes) == "table", "successful DAP run must capture scopes")
 check(result.scopes.scopes[1].name == "Locals", "Scopes captured")
 check(debug.status().active == false, "Session cleaned up")
 debug.setup(config({ python, fake, "--reject" }))
@@ -61,7 +65,9 @@ if vim.env.ROSE_TEST_DEBUGPY == "1" then
     justMyCode = true,
   }, 20000))
   local live = debug.call({ action = "run", name = "probe" })
+  assert(type(live) == "table", "real debugpy must return a result")
   check(live.status == "ok" and live.stopped ~= nil, "Real debugpy: " .. vim.inspect(live))
+  assert(type(live.stack) == "table", "real debugpy must capture a stack trace")
   check(#live.stack.stackFrames > 0, "Real debugpy stack")
 end
 vim.fn.delete(workspace, "rf")

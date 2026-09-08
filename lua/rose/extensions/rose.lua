@@ -58,7 +58,7 @@ local tool_schemas = {
 
 function M.mcp_tool()
   for action_name, schema in pairs(tool_schemas) do
-    schema.func = function(args, on_log, on_complete)
+    schema.func = function(args, _on_log, on_complete)
       local hub = require("rose").get_hub_instance()
       if not hub then
         return nil, "Rose MCP Hub not initialized"
@@ -89,7 +89,7 @@ function M.mcp_tool()
             rose = sidebar,
           },
           callback = function(result, err)
-            on_complete(result.text, err)
+            on_complete(result and result.text, err)
           end,
         })
       elseif params.action == "use_mcp_tool" then
@@ -100,7 +100,7 @@ function M.mcp_tool()
             rose = sidebar,
           },
           callback = function(result, err)
-            on_complete(result.text, err)
+            on_complete(result and result.text, err)
           end,
         })
       else

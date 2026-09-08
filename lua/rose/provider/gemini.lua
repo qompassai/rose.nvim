@@ -1,10 +1,10 @@
+local Job = require("plenary.job")
 local logger = require("rose.logger")
 local utils = require("rose.utils")
-local Job = require("plenary.job")
 
 ---@class Gemini
 ---@field endpoint string
----@field api_key string|table
+---@field api_key string|string[]|nil
 ---@field name string
 ---@field _model string|nil
 local Gemini = {}
@@ -26,7 +26,7 @@ local AVAILABLE_API_PARAMETERS = {
 
 -- Creates a new Gemini instance
 ---@param endpoint string
----@param api_key string|table
+---@param api_key string|string[]|nil
 ---@return Gemini
 function Gemini:new(endpoint, api_key)
   return setmetatable({
@@ -52,7 +52,10 @@ function Gemini:preprocess_payload(payload)
     if message.role == "system" then
       payload.system_instruction = {
         parts = {
-          text = (message.parts and message.parts.text or message.content):gsub("^%s*(.-)%s*$", "%1"),
+          text = (message.parts and message.parts.text or message.content):gsub(
+            "^%s*(.-)%s*$",
+            "%1"
+          ),
         },
       }
     else
@@ -84,18 +87,31 @@ end
 -- Verifies the API key or executes a routine to retrieve it
 ---@return boolean
 function Gemini:verify()
-  if type(self.api_key) == "table" then
-    local command = table.concat(self.api_key, " ")
-    local handle = io.popen(command)
+  local current_key = self.api_key
+  if type(current_key) == "table" then
+    local command = table.concat(current_key, " ")
+    local handle, open_err = io.popen(command)
     if handle then
-      self.api_key = handle:read("*a"):gsub("%s+", "")
-      handle:close()
+      local key, read_err = handle:read("*a")
+      local closed, close_err = handle:close()
+      if not key or not closed then
+        logger.error(
+          "Error reading API key of " .. self.name .. ": " .. tostring(read_err or close_err)
+        )
+        return false
+      end
+      key = key:gsub("%s+", "")
+      if key == "" then
+        logger.error("Empty API key of " .. self.name)
+        return false
+      end
+      self.api_key = key
       return true
     else
-      logger.error("Error verifying API key of " .. self.name)
+      logger.error("Error verifying API key of " .. self.name .. ": " .. tostring(open_err))
       return false
     end
-  elseif self.api_key and self.api_key:match("%S") then
+  elseif type(current_key) == "string" and current_key:match("%S") then
     return true
   else
     logger.error("Error with API key " .. self.name .. " " .. vim.inspect(self.api_key))
@@ -111,12 +127,13 @@ function Gemini:process_stdout(response)
     local success, content = pcall(vim.json.decode, response)
     if
       success
-      and content.candidates
-      and content.candidates[1]
-      and content.candidates[1].content
-      and content.candidates[1].content.parts
-      and content.candidates[1].content.parts[1]
-      and content.candidates[1].content.parts[1].text
+      and type(content) == "table"
+      and type(content.candidates) == "table"
+      and type(content.candidates[1]) == "table"
+      and type(content.candidates[1].content) == "table"
+      and type(content.candidates[1].content.parts) == "table"
+      and type(content.candidates[1].content.parts[1]) == "table"
+      and type(content.candidates[1].content.parts[1].text) == "string"
     then
       return content.candidates[1].content.parts[1].text
     else
@@ -129,7 +146,12 @@ end
 ---@param res string
 function Gemini:process_onexit(res)
   local success, parsed = pcall(vim.json.decode, res)
-  if success and parsed.error and parsed.error.message then
+  if
+    success
+    and type(parsed) == "table"
+    and type(parsed.error) == "table"
+    and type(parsed.error.message) == "string"
+  then
     logger.error(
       string.format(
         "GEMINI - code: %s message: %s status: %s",
@@ -155,12 +177,18 @@ function Gemini:get_available_models(online)
       args = { "https://generativelanguage.googleapis.com/v1beta/models?key=" .. self.api_key },
       on_exit = function(job)
         local parsed_response = utils.parse_raw_response(job:result())
-        self:process_onexit(parsed_response)
         ids = {}
+        if not parsed_response then
+          logger.error("Gemini - No model response received")
+          return
+        end
+        self:process_onexit(parsed_response)
         local success, decoded = pcall(vim.json.decode, parsed_response)
-        if success and decoded.models then
+        if success and type(decoded) == "table" and type(decoded.models) == "table" then
           for _, item in ipairs(decoded.models) do
-            table.insert(ids, string.sub(item.name, 8))
+            if type(item) == "table" and type(item.name) == "string" then
+              table.insert(ids, string.sub(item.name, 8))
+            end
           end
         end
       end,

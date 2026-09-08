@@ -40,7 +40,7 @@ M.BufTarget = {
   tabnew = 4, -- new tab
 }
 
----@param buf number | nil # buffer number
+---@param buf integer | nil # buffer number
 ---@param title string # title of the popup
 ---@param size_func function # size_func(editor_width, editor_height) -> width, height, row, col
 ---@param opts table # options - gid=nul, on_leave=false, keep_buf=false

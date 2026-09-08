@@ -60,6 +60,8 @@ end
 
 -- Picks the configured command or the first installed candidate. Returns a
 -- fresh copy so callers may append the path without mutating the tables above.
+---@return string[]? argv
+---@return string? error
 function M.detect(candidates, configured, kind)
   assert(type(candidates) == "table", "candidates must be a list")
   assert(type(kind) == "string", "kind must be a string")
@@ -68,13 +70,13 @@ function M.detect(candidates, configured, kind)
     if vim.fn.executable(configured[1]) ~= 1 then
       return nil, kind .. " command not found: " .. configured[1]
     end
-    return vim.deepcopy(configured)
+    return (vim.deepcopy(configured))
   end
   for index = 1, #candidates do
     local candidate = candidates[index]
     assert(argv_valid(candidate), "built-in candidate must be valid")
     if vim.fn.executable(candidate[1]) == 1 then
-      return vim.deepcopy(candidate)
+      return (vim.deepcopy(candidate))
     end
   end
   local names = {}
@@ -103,7 +105,9 @@ function M.record(argv, path, max_seconds, callback)
   assert(max_seconds >= 1, "max_seconds must be at least 1")
   assert(max_seconds <= M.record_seconds_max, "max_seconds exceeds the recording limit")
   assert(type(callback) == "function", "callback must be a function")
-  local token, handle, started_ns = {}, nil, uv.hrtime()
+  local token, started_ns = {}, uv.hrtime()
+  ---@type vim.SystemObj?
+  local handle
   local done, cancelled, stopping, timer, grace = false, false, false, nil, nil
   local function finish(err, result)
     if done then
@@ -129,14 +133,22 @@ function M.record(argv, path, max_seconds, callback)
     finish(nil, { path = path, bytes = stat.size, seconds = seconds })
   end
   function token.stop()
-    if done or stopping then
+    if done or stopping or not handle then
       return
     end
     stopping = true
     pcall(handle.kill, handle, 2)
     grace = uv.new_timer()
-    grace:start(M.stop_grace_ms, 0, function()
+    if not grace then
+      cancelled = true
+      finish("could not create recorder stop timer")
       pcall(handle.kill, handle, 9)
+      return
+    end
+    grace:start(M.stop_grace_ms, 0, function()
+      if handle then
+        pcall(handle.kill, handle, 9)
+      end
     end)
   end
   function token.cancel()
@@ -145,7 +157,14 @@ function M.record(argv, path, max_seconds, callback)
     end
     cancelled = true
     finish("cancelled")
-    pcall(handle.kill, handle, 9)
+    if handle then
+      pcall(handle.kill, handle, 9)
+    end
+  end
+  timer = uv.new_timer()
+  if not timer then
+    finish("could not create recorder timeout timer")
+    return token
   end
   local command = vim.deepcopy(argv)
   command[#command + 1] = path
@@ -156,8 +175,9 @@ function M.record(argv, path, max_seconds, callback)
     return token
   end
   handle = result
-  timer = uv.new_timer()
-  timer:start(max_seconds * 1000, 0, token.stop)
+  if timer then
+    timer:start(max_seconds * 1000, 0, token.stop)
+  end
   return token
 end
 
@@ -171,7 +191,9 @@ function M.play(argv, path, callback)
   if not stat or stat.type ~= "file" then
     return deliver.rejected(callback, "audio file does not exist")
   end
-  local token, handle, done, timer = {}, nil, false, nil
+  local token, done, timer = {}, false, nil
+  ---@type vim.SystemObj?
+  local handle
   local function finish(err)
     if done then
       return
@@ -185,7 +207,14 @@ function M.play(argv, path, callback)
       return
     end
     finish("cancelled")
-    pcall(handle.kill, handle, 9)
+    if handle then
+      pcall(handle.kill, handle, 9)
+    end
+  end
+  timer = uv.new_timer()
+  if not timer then
+    finish("could not create playback timeout timer")
+    return token
   end
   local command = vim.deepcopy(argv)
   command[#command + 1] = path
@@ -203,11 +232,14 @@ function M.play(argv, path, callback)
     return token
   end
   handle = result
-  timer = uv.new_timer()
-  timer:start(M.play_seconds_max * 1000, 0, function()
-    finish("playback exceeded the time limit")
-    pcall(handle.kill, handle, 9)
-  end)
+  if timer then
+    timer:start(M.play_seconds_max * 1000, 0, function()
+      finish("playback exceeded the time limit")
+      if handle then
+        pcall(handle.kill, handle, 9)
+      end
+    end)
+  end
   return token
 end
 

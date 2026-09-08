@@ -455,6 +455,7 @@ if diver and diver ~= "" then
   })
   eq(started, true)
   handle.cancel()
+  assert(type(completion) == "table", "cancellation must deliver its completion result")
   eq(completion.status, "stale")
   handle.cancel()
   eq(count, 1, "completion exactly once")

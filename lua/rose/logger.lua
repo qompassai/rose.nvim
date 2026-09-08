@@ -18,16 +18,16 @@ local function read_file(path)
   end
   local content = file:read("*a")
   file:close()
-  return content
+  return content or ""
 end
 local function write_file(path, content)
   local file = io.open(path, "w")
   if not file then
     return false
   end
-  file:write(content)
-  file:close()
-  return true
+  local written = file:write(content)
+  local closed = file:close()
+  return written ~= nil and closed ~= nil
 end
 local function limit_logfile_lines()
   local content = read_file(M._logfile)

@@ -1,5 +1,4 @@
 local M = {}
-local ui_utils = require("rose.utils.ui")
 function M.parse_params(params, action_name)
     params = params or {}
     local server_name = params.server_name
@@ -63,8 +62,8 @@ function M.setup_codecompanion_variables(enabled)
             local resource_name = resource.name or uri
             local description = resource.description or ""
             if type(description) == "function" then
-                local ok, desc = pcall(description, resource)
-                if ok then
+                local desc_ok, desc = pcall(description, resource)
+                if desc_ok then
                     description = desc or ""
                 else
                     description = "Error in description function: " .. (desc or "")
@@ -126,16 +125,16 @@ function M.setup_codecompanion_slash_commands(enabled)
             local description = prompt.description or ""
             local arguments = prompt.arguments or {}
             if type(description) == "function" then
-                local ok, desc = pcall(description, prompt)
-                if ok then
+                local desc_ok, desc = pcall(description, prompt)
+                if desc_ok then
                     description = desc or ""
                 else
                     description = "Error in description function: " .. (desc or "")
                 end
             end
             if type(arguments) == "function" then
-                local ok, args = pcall(arguments, prompt)
-                if ok then
+                local args_ok, args = pcall(arguments, prompt)
+                if args_ok then
                     arguments = args or {}
                 else
                     vim.notify("Error in arguments function: " .. (args or ""), vim.log.levels.ERROR)
@@ -228,7 +227,6 @@ function M.collect_arguments(arguments, callback)
         local default = arg.default or ""
 
         local function submit_input(input)
-            vim.notify("submit" .. input)
             if arg.required and (input == nil or input == "") then
                 vim.notify("Value for " .. arg.name .. " is required", vim.log.levels.ERROR)
                 should_proceed = false
@@ -249,7 +247,13 @@ function M.collect_arguments(arguments, callback)
             values[arg.name] = nil
             collect_input(index + 1)
         end
-        ui_utils.multiline_input(title, default, submit_input, cancel_input)
+        vim.ui.input({ prompt = title, default = default }, function(input)
+            if input == nil then
+                cancel_input()
+            else
+                submit_input(input)
+            end
+        end)
     end
 
     if #arguments > 0 then
@@ -294,16 +298,16 @@ function M.setup_avante_slash_commands(enabled)
             local description = prompt.description or ""
             local arguments = prompt.arguments or {}
             if type(description) == "function" then
-                local ok, desc = pcall(description, prompt)
-                if ok then
+                local desc_ok, desc = pcall(description, prompt)
+                if desc_ok then
                     description = desc or ""
                 else
                     description = "Error in description function: " .. (desc or "")
                 end
             end
             if type(arguments) == "function" then
-                local ok, args = pcall(arguments, prompt)
-                if ok then
+                local args_ok, args = pcall(arguments, prompt)
+                if args_ok then
                     arguments = args or {}
                 else
                     vim.notify("Error in arguments function: " .. (args or ""), vim.log.levels.ERROR)
@@ -317,7 +321,7 @@ function M.setup_avante_slash_commands(enabled)
             local slash_command = {
                 name = "mcp:" .. server_name .. ":" .. prompt_name,
                 description = description,
-                callback = function(sidebar, args, cb)
+                callback = function(sidebar, _args, cb)
                     M.collect_arguments(arguments, function(values)
                         local response, err = hub:get_prompt(server_name, prompt_name, values, {
                             caller = {

@@ -4,7 +4,7 @@ local uv = vim.uv or vim.loop
 
 local function net_api()
   local ok, net = pcall(require, "vim.net")
-  return ok and type(net.request) == "function" and net or nil
+  return ok and type(net) == "table" and type(net.request) == "function" and net or nil
 end
 
 function M.capabilities()
@@ -97,7 +97,13 @@ local function request_start(opts, transport, timeout_ms, finish)
       retry = 0,
       headers = { ["Content-Type"] = "application/json" },
     }, function(err, response)
-      finish(err, response and response.body)
+      if err then
+        finish(err)
+      elseif type(response) ~= "table" or type(response.body) ~= "string" then
+        finish("HTTP returned no valid response body")
+      else
+        finish(nil, response.body)
+      end
     end)
   end
   local argv = curl_argv(opts, timeout_ms)
@@ -161,6 +167,10 @@ function M.request(opts, callback)
   end
   local timeout_ms = opts.timeout or timeout_ms_default
   timer = uv.new_timer()
+  if not timer then
+    finish("could not create HTTP timeout timer")
+    return token
+  end
   timer:start(timeout_ms, 0, function()
     finish("HTTP timeout after " .. timeout_ms .. "ms")
     terminate()
@@ -168,8 +178,11 @@ function M.request(opts, callback)
   local ok, result, unavailable = request_start(opts, transport, timeout_ms, finish)
   if unavailable then
     finish(unavailable)
-  elseif ok then
+  elseif ok and result then
     handle = result
+    if done then
+      terminate()
+    end
   else
     finish("HTTP start failed: " .. tostring(result))
   end

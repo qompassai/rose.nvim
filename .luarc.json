@@ -1,0 +1,190 @@
+{
+  "runtime": {
+    "version": "LuaJIT",
+    "fileEncoding": "utf8",
+    "path": [
+      "lua/?.lua",
+      "lua/?/init.lua"
+    ],
+    "meta": "${version} ${language} ${encoding}",
+    "nonstandardSymbol": [
+      "//",
+      "/**/",
+      "continue"
+    ],
+    "unicodeName": false,
+    "pathStrict": false
+  },
+  "workspace": {
+    "userThirdParty": [],
+    "library": [
+      "$VIMRUNTIME"
+    ],
+    "maxPreload": 5000,
+    "preloadFileSize": 500,
+    "useGitIgnore": true,
+    "checkThirdParty": false,
+    "ignoreDir": [
+      "build",
+      "node_modules",
+      ".vscode"
+    ],
+    "ignoreSubmodules": true
+  },
+  "diagnostics": {
+    "unusedLocalExclude": [
+      "_*"
+    ],
+    "libraryFiles": "Disable",
+    "disableScheme": [
+      "git"
+    ],
+    "globals": [
+      "agutils",
+      "ARGS",
+      "assert",
+      "AsyncEventHook",
+      "bcache",
+      "bit32",
+      "buildDefaultChannelVolumes",
+      "client",
+      "Client",
+      "Conf",
+      "config",
+      "Constraint",
+      "Core",
+      "cutils",
+      "describe",
+      "EventInterest",
+      "Feature",
+      "Features",
+      "findAssociatedLinkGroupNode",
+      "formKey",
+      "futils",
+      "getStoredStreamProps",
+      "gpg_id_to_name",
+      "GLib",
+      "group",
+      "group_loopback_modules",
+      "hl",
+      "HyprLayoutCtx",
+      "ImplMetadata",
+      "Interest",
+      "it",
+      "items",
+      "jit",
+      "Json",
+      "JsonUtils",
+      "LocalModule",
+      "LazyVim",
+      "Log",
+      "lutils",
+      "node_directions",
+      "ObjectManager",
+      "onLinkGroupPortsStateChanged",
+      "os_getenv",
+      "Plugin",
+      "Pod",
+      "ProcUtils",
+      "PW_AUDIO_NAMESPACE",
+      "recipients",
+      "reconfigureAudioAdapters",
+      "require",
+      "require_std",
+      "restore_stream_hook",
+      "route_settings_metadata_changed_hook",
+      "rs_metadata",
+      "saveStreamProps",
+      "Script",
+      "SessionItem",
+      "Settings",
+      "SimpleEventHook",
+      "sources",
+      "state",
+      "State",
+      "state_table",
+      "store_stream_props_hook",
+      "store_stream_target_hook",
+      "toggleState",
+      "use",
+      "vim",
+      "windowspace"
+    ],
+    "workspaceRate": 100,
+    "severity": {
+      "deprecated": "Warning",
+      "unused-local": "Hint",
+      "action-after-return": "Warning",
+      "ambiguity-1": "Warning",
+      "err-assign-as-eq": "Error",
+      "err-comment-prefix": "Error",
+      "unicode-name": "Hint",
+      "undefined-doc-class": "Warning",
+      "undefined-field": "Error",
+      "unused-varar": "Hint"
+    },
+    "enable": true,
+    "groupSeverity": {
+      "ambiguity": "Warning",
+      "await": "Warning",
+      "codestyle": "Information",
+      "duplicate": "Warning",
+      "luadoc": "Warning",
+      "redefined": "Warning",
+      "strict": "Warning",
+      "unused": "Hint",
+      "unbalanced": "Warning",
+      "global": "Error",
+      "type-check": "Error"
+    },
+    "workspaceEvent": "OnChange",
+    "workspaceDelay": 3000,
+    "neededFileStatus": {
+      "deprecated": "Any",
+      "unused-local": "Any",
+      "codestyle-check": "Any",
+      "unused-vararg": "Any",
+      "unused-function": "Any"
+    },
+    "disable": [
+      "await-in-sync",
+      "codestyle-check",
+      "duplicate-doc-alias",
+      "duplicate-doc-field",
+      "duplicate-index",
+      "lowercase-global",
+      "duplicate-set-field",
+      "incomplete-signature-doc",
+      "inject-field",
+      "name-style-check",
+      "not-yieldable",
+      "redundant-parameter",
+      "redundant-return-value",
+      "spell-check"
+    ],
+    "groupFileStatus": {
+      "ambiguity": "Any",
+      "await": "Any",
+      "codestyle": "Opened",
+      "duplicate": "Any",
+      "luadoc": "Any",
+      "redefined": "Any",
+      "strict": "Any",
+      "unused": "Any",
+      "global": "Any",
+      "type-check": "Any"
+    },
+    "ignoredFiles": "Disable"
+  },
+  "type": {
+    "castNumberToInteger": false,
+    "checkTableShape": true,
+    "inferParamType": true,
+    "inferTableSize": 200,
+    "weakNilCheck": false,
+    "weakUnionCheck": false
+  },
+  "addonManager": {
+    "enable": false
+  }
+}

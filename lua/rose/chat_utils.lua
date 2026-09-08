@@ -7,7 +7,7 @@ local utils = require("rose.utils")
 local M = {}
 
 ---@param params table | string # table with args or string args
----@return number # buf target
+---@return integer # buf target
 M.resolve_buf_target = function(params)
   local target = type(params) == "table" and (params.args or "") or params
   local target_map = {
@@ -19,7 +19,7 @@ M.resolve_buf_target = function(params)
   return target_map[target] or ui.BufTarget.current
 end
 
----@param buf number | nil
+---@param buf integer | nil
 M.prep_md = function(buf)
   buf = buf or vim.api.nvim_get_current_buf()
   vim.api.nvim_set_option_value("swapfile", false, { buf = buf })

@@ -1,20 +1,20 @@
 local Anthropic = require("rose.provider.anthropic")
 local Gemini = require("rose.provider.gemini")
+local GitHub = require("rose.provider.github")
 local Groq = require("rose.provider.groq")
 local Mistral = require("rose.provider.mistral")
 local Nvidia = require("rose.provider.nvidia")
-local Rose = require("rose.provider.qompass")
 local OpenAI = require("rose.provider.openai")
 local Perplexity = require("rose.provider.perplexity")
-local GitHub = require("rose.provider.github")
-local xAI = require("rose.provider.xai")
+local Rose = require("rose.provider.qompass")
 local logger = require("rose.logger")
+local xAI = require("rose.provider.xai")
 
 local M = {}
 
 ---@param prov_name string
 ---@param endpoint string
----@param api_key string|table
+---@param api_key string|string[]|nil
 ---@return table
 M.init_provider = function(prov_name, endpoint, api_key)
   local providers = {

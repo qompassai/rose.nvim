@@ -1,10 +1,10 @@
-local logger = require("rose.logger")
 local Job = require("plenary.job")
+local logger = require("rose.logger")
 local utils = require("rose.utils")
 
 ---@class Rose
 ---@field endpoint string
----@field api_key string|table
+---@field api_key string|string[]|nil
 ---@field name string
 ---@field rose_installed boolean
 local Rose = {}
@@ -37,7 +37,7 @@ local AVAILABLE_API_PARAMETERS = {
 }
 
 ---@param endpoint string
----@param api_key string|table
+---@param api_key string|string[]|nil
 ---@return Rose
 function Rose:new(endpoint, api_key)
   return setmetatable({
@@ -79,7 +79,12 @@ end
 function Rose:process_stdout(response)
   if response:match("message") and response:match("content") then
     local success, content = pcall(vim.json.decode, response)
-    if success and content.message and content.message.content then
+    if
+      success
+      and type(content) == "table"
+      and type(content.message) == "table"
+      and type(content.message.content) == "string"
+    then
       return content.message.content
     else
       logger.debug("Could not process response: " .. response)
@@ -91,7 +96,7 @@ end
 ---@param res string
 function Rose:process_onexit(res)
   local success, parsed = pcall(vim.json.decode, res)
-  if success and parsed.error then
+  if success and type(parsed) == "table" and type(parsed.error) == "string" then
     logger.error("Rose - error: " .. parsed.error)
   end
 end
@@ -110,27 +115,28 @@ function Rose:get_available_models()
   }):sync()
 
   local parsed_response = utils.parse_raw_response(job)
-  self:process_onexit(parsed_response)
-
-  if parsed_response == "" then
+  if not parsed_response or parsed_response == "" then
     logger.debug("Rose server not running.")
     return {}
   end
+  self:process_onexit(parsed_response)
 
   local success, parsed_data = pcall(vim.json.decode, parsed_response)
-  if not success then
+  if not success or type(parsed_data) ~= "table" then
     logger.error("Rose - Error parsing JSON: " .. vim.inspect(parsed_data))
     return {}
   end
 
-  if not parsed_data.models then
+  if type(parsed_data.models) ~= "table" then
     logger.error("Rose - No models found. Please use 'rose pull' to download one.")
     return {}
   end
 
   local names = {}
   for _, model in ipairs(parsed_data.models) do
-    table.insert(names, model.name)
+    if type(model) == "table" and type(model.name) == "string" then
+      table.insert(names, model.name)
+    end
   end
 
   return names

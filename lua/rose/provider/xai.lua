@@ -1,6 +1,6 @@
+local Job = require("plenary.job")
 local OpenAI = require("rose.provider.openai")
 local utils = require("rose.utils")
-local Job = require("plenary.job")
 
 local xAI = setmetatable({}, { __index = OpenAI })
 xAI.__index = xAI
@@ -64,12 +64,18 @@ function xAI:get_available_models(online)
       },
       on_exit = function(job)
         local parsed_response = utils.parse_raw_response(job:result())
-        self:process_onexit(parsed_response)
         ids = {}
+        if not parsed_response then
+          require("rose.logger").error("xAI - No model response received")
+          return
+        end
+        self:process_onexit(parsed_response)
         local success, decoded = pcall(vim.json.decode, parsed_response)
-        if success and decoded.models then
+        if success and type(decoded) == "table" and type(decoded.models) == "table" then
           for _, item in ipairs(decoded.models) do
-            table.insert(ids, item.id)
+            if type(item) == "table" and type(item.id) == "string" then
+              table.insert(ids, item.id)
+            end
           end
         end
         return ids

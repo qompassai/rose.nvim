@@ -1,7 +1,7 @@
 local M = {}
-local w = require("rose.tooling.workspace")
 local discovery = require("rose.tooling.discovery")
 local lsp = require("rose.tooling.lsp")
+local w = require("rose.tooling.workspace")
 local uv = vim.uv or vim.loop
 local cached
 
@@ -31,16 +31,22 @@ local function registry()
   if not fd then
     return nil
   end
-  local text = uv.fs_read(fd, math.min(uv.fs_fstat(fd).size, 65536), 0)
+  local stat = uv.fs_fstat(fd)
+  local text = stat and uv.fs_read(fd, math.min(stat.size, 65536), 0)
   uv.fs_close(fd)
   if not text or not text:find("M.completion_api_version = 1", 1, true) then
     return nil
   end
   -- The additive embedding mode skips both eager definitions and updater setup.
   -- Never call runner.setup(), and do not replace the user's package.loaded value.
-  local chunk = assert(loadfile(real))
-  local runner = chunk({ lazy = true, no_updates = true })
-  assert(type(runner) == "table", "Diver lint runner returned no registry")
+  local chunk = loadfile(real)
+  if not chunk then
+    return nil
+  end
+  local ok, runner = pcall(chunk, { lazy = true, no_updates = true })
+  if not ok or type(runner) ~= "table" then
+    return nil
+  end
   cached = runner
   return runner
 end

@@ -57,6 +57,7 @@ local function load_index(path)
 end
 
 -- True when the source is newer than the index, missing, or modified in a buffer.
+---@param index_stat uv.fs_stat.result
 local function document_newer(absolute, index_stat)
   local actual = uv.fs_stat(absolute)
   -- A missing source counts as newer: the index no longer describes anything on disk.
@@ -127,6 +128,11 @@ local function collect_document(doc, absolute, newer, args, accepts, add)
   for _, occurrence in ipairs(doc.occurrences or {}) do
     if accepts(occurrence.symbol) then
       local roles = tonumber(occurrence.symbol_roles or occurrence.symbolRoles) or 0
+      assert(
+        roles >= 0 and roles == math.floor(roles),
+        "SCIP symbol roles must be an unsigned integer"
+      )
+      ---@cast roles integer
       add({
         type = "occurrence",
         path = relative_path,
@@ -164,6 +170,9 @@ function M.query(args)
   local limit = tonumber(args.limit) or matches_limit_default
   limit = math.min(math.max(limit, 1), matches_limit_max)
   local stat = uv.fs_stat(path)
+  if not stat then
+    return { status = "error", error = "SCIP index is no longer available", verified = false }
+  end
   local matches, omitted, truncated, stale = {}, 0, false, false
   local declared_root, root_matches = declared_root_status(index)
   if root_matches == false then

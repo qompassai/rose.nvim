@@ -206,6 +206,8 @@ function M.references(args)
     row >= 1 and row == math.floor(row) and col >= 0 and col == math.floor(col),
     "invalid reference position"
   )
+  ---@cast row integer
+  ---@cast col integer
   if s.bufnr then
     assert(row <= api.nvim_buf_line_count(s.bufnr), "reference line is outside buffer")
   end

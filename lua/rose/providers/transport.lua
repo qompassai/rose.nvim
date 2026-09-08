@@ -512,6 +512,10 @@ function M.request(opts, callback)
     return token
   end
   state.timer = uv.new_timer()
+  if not state.timer then
+    finish("could not create provider timeout timer")
+    return token
+  end
   state.timer:start(timeout_ms, 0, function()
     fail("provider request timeout")
   end)

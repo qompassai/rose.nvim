@@ -66,6 +66,9 @@ function Spinner:start(message, opts)
     show = opts.show_progress or false,
   }
   self.timer = vim.uv.new_timer()
+  if not self.timer then
+    return nil, "could not create spinner timer"
+  end
   self.timer:start(
     0,
     self.interval,

@@ -145,8 +145,9 @@ function M.write(args)
   local buffers = write_buffers(path, old, args)
   assert(not stat or vim.fn.filewritable(path) == 1, "file is not writable")
   local parent = vim.fs.dirname(path)
+  local parent_stat = parent and uv.fs_stat(parent)
   assert(
-    uv.fs_stat(parent) and uv.fs_stat(parent).type == "directory",
+    parent and parent_stat and parent_stat.type == "directory",
     "parent directory does not exist"
   )
   local temporary, fd = write_temporary(parent, stat)
@@ -185,7 +186,8 @@ end
 
 function M.list(args)
   local path = w.resolve(args.path or ".")
-  assert(uv.fs_stat(path) and uv.fs_stat(path).type == "directory", "path is not a directory")
+  local stat = uv.fs_stat(path)
+  assert(stat and stat.type == "directory", "path is not a directory")
   local limit = math.min(math.max(tonumber(args.limit) or 200, 1), 1000)
   local scan = assert(uv.fs_scandir(path))
   local entries, omitted, truncated = {}, 0, false
@@ -207,11 +209,12 @@ function M.list(args)
         truncated = true
         break
       end
+      local target = kind == "link" and uv.fs_stat(resolved) or nil
       entries[#entries + 1] = {
         name = name,
         path = relative,
         type = kind,
-        target_type = kind == "link" and uv.fs_stat(resolved).type or nil,
+        target_type = target and target.type or nil,
       }
     else
       omitted = omitted + 1

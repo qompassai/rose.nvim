@@ -3,7 +3,7 @@ local utils = require("rose.utils")
 
 ---@class Anthropic
 ---@field endpoint string
----@field api_key string|table
+---@field api_key string|string[]|nil
 ---@field name string
 local Anthropic = {}
 Anthropic.__index = Anthropic
@@ -29,7 +29,7 @@ local AVAILABLE_API_PARAMETERS = {
 
 -- Creates a new Anthropic instance
 ---@param endpoint string
----@param api_key string|table
+---@param api_key string|string[]|nil
 ---@return Anthropic
 function Anthropic:new(endpoint, api_key)
   return setmetatable({
@@ -71,23 +71,31 @@ function Anthropic:curl_params()
 end
 
 --- Verifies the API key or executes a routine to retrieve it
----@param self table The Anthropic instance
 ---@return boolean success Whether the API key verification succeeded
 function Anthropic:verify()
-  ---@type string|table
   local current_key = self.api_key
 
   if type(current_key) == "table" then
     local command = table.concat(current_key, " ")
-    local handle = io.popen(command)
+    local handle, open_err = io.popen(command)
     if handle then
-      ---@type string
-      local key_result = handle:read("*a"):gsub("%s+", "")
-      handle:close()
-      self.api_key = key_result
+      local key, read_err = handle:read("*a")
+      local closed, close_err = handle:close()
+      if not key or not closed then
+        logger.error(
+          "Error reading API key of " .. self.name .. ": " .. tostring(read_err or close_err)
+        )
+        return false
+      end
+      key = key:gsub("%s+", "")
+      if key == "" then
+        logger.error("Empty API key of " .. self.name)
+        return false
+      end
+      self.api_key = key
       return true
     else
-      logger.error("Error verifying API key of " .. self.name)
+      logger.error("Error verifying API key of " .. self.name .. ": " .. tostring(open_err))
       return false
     end
   elseif current_key and type(current_key) == "string" and current_key:match("%S") then
@@ -104,7 +112,13 @@ end
 function Anthropic:process_stdout(response)
   if response:match("content_block_delta") and response:match("text_delta") then
     local success, decoded_line = pcall(vim.json.decode, response)
-    if success and decoded_line.delta and decoded_line.delta.type == "text_delta" and decoded_line.delta.text then
+    if
+      success
+      and type(decoded_line) == "table"
+      and type(decoded_line.delta) == "table"
+      and decoded_line.delta.type == "text_delta"
+      and type(decoded_line.delta.text) == "string"
+    then
       return decoded_line.delta.text
     else
       logger.debug("Could not process response: " .. response)
@@ -116,8 +130,15 @@ end
 ---@param res string
 function Anthropic:process_onexit(res)
   local success, parsed = pcall(vim.json.decode, res)
-  if success and parsed.error and parsed.error.message then
-    logger.error(string.format("Anthropic - message: %s type: %s", parsed.error.message, parsed.error.type))
+  if
+    success
+    and type(parsed) == "table"
+    and type(parsed.error) == "table"
+    and type(parsed.error.message) == "string"
+  then
+    logger.error(
+      string.format("Anthropic - message: %s type: %s", parsed.error.message, parsed.error.type)
+    )
   end
 end
 
