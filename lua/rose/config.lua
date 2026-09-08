@@ -1,449 +1,159 @@
---/qompassai/rose.nvim/lua/config.lua
--- --------------------------------------------
--- Copyright (C) 2025 Qompass AI, All rights reserved
----@class RoseOptions
----@field chat_dir string
----@field state_dir string
-local utils = require("rose.utils")
-local ChatHandler = require("rose.chat_handler")
-local init_provider = require("rose.provider").init_provider
-local M = {
-  api = require("rose.api"),
-  ui = require("rose.ui"),
-  logger = require("rose.logger"),
-}
-local system_chat_prompt = [[
-You are a versatile AI assistant with capabilities
-extending to general knowledge and coding support. When engaging
-with users, please adhere to the following guidelines to ensure
-the highest quality of interaction:
+-- Native configuration. No provider, secret-store or project-local config reads.
+local M = {}
 
-- Admit when unsure by saying 'I don't know.'
-- Ask for clarification when needed.
-- Use first principles thinking to analyze queries.
-- Start with the big picture, then focus on details.
-- Apply the Socratic method to enhance understanding.
-- Include all necessary code in your responses if the question asks for code.
-- Stay calm and confident with each task.
-]]
-
-local system_command_prompt = [[
-You are an AI specializing in assisting knowledge work
-tasks, including clinical care, healthcare, education, and teaching quality AI use. Your
-responses should strictly pertain to the question provided. Please ensure
-that your reply is solely focused on answering the question.
-]]
-
-local topic_prompt = [[
-Summarize the topic of our conversation above
-in three or four words. Respond only with those words.
-]]
-M.options = {
-  providers = {
-    pplx = {
-      api_key = require("rose.api").pkey("api/perplexity"),
-      endpoint = "https://api.perplexity.ai/chat/completions",
-      topic_prompt = topic_prompt,
-      topic = {
-        model = "llama-3.1-70b-instruct",
-        params = { max_tokens = 64 },
-      },
-      params = {
-        chat = { temperature = 1.1, top_p = 1 },
-        command = { temperature = 1.1, top_p = 1 },
-      },
-    },
-    openai = {
-      api_key = require("rose.api").pkey("api/groq"),
-      endpoint = "https://api.openai.com/v1/chat/completions",
-      topic_prompt = topic_prompt,
-      topic = {
-        model = "gpt-4o-mini",
-        params = { max_completion_tokens = 64 },
-      },
-      params = {
-        chat = { temperature = 1.1, top_p = 1 },
-        command = { temperature = 1.1, top_p = 1 },
-      },
-    },
-    gemini = {
-      api_key = "",
-      endpoint = "https://generativelanguage.googleapis.com/v1beta/models/",
-      topic_prompt = topic_prompt,
-      topic = {
-        model = "gemini-1.5-flash",
-        params = { maxOutputTokens = 64 },
-      },
-      params = {
-        chat = { temperature = 1.1, topP = 1, topK = 10, maxOutputTokens = 8192 },
-        command = { temperature = 0.8, topP = 1, topK = 10, maxOutputTokens = 8192 },
-      },
-    },
-    qompass = {
-      endpoint = "http://localhost:11434/api/chat",
-      topic_prompt = [[
-      Summarize the chat above and only provide a short headline of 2 to 3
-      words without any opening phrase like "Sure, here is the summary",
-      "Sure! Here's a shortheadline summarizing the chat" or anything similar.
-      ]],
-      topic = {
-        model = "smollm2:135m",
-        params = { max_tokens = 32 },
-      },
-      params = {
-        chat = { temperature = 1.5, top_p = 1, num_ctx = 8192, min_p = 0.05 },
-        command = { temperature = 1.5, top_p = 1, num_ctx = 8192, min_p = 0.05 },
-      },
-    },
-    anthropic = {
-      api_key = "",
-      endpoint = "https://api.anthropic.com/v1/messages",
-      topic_prompt = "You only respond with 3 to 4 words to summarize the past conversation.",
-      topic = {
-        model = "claude-3-5-haiku-latest",
-        params = { max_tokens = 32 },
-      },
-      params = {
-        chat = { max_tokens = 4096 },
-        command = { max_tokens = 4096 },
-      },
-    },
-    mistral = {
-      api_key = require("rose.api").pkey("api/mistral"),
-      endpoint = "https://api.mistral.ai/v1/chat/completions",
-      topic_prompt = [[
-      Summarize the chat above and only provide a short headline of 3 to 4
-      words without any opening phrase like "Sure, here is the summary",
-      "Sure! Here's a shortheadline summarizing the chat" or anything similar.
-      ]],
-      topic = {
-        model = "mistral-medium-latest",
-        params = {},
-      },
-      params = {
-        chat = { temperature = 1.5, top_p = 1 },
-        command = { temperature = 1.5, top_p = 1 },
-      },
-    },
-    groq = {
-      api_key = require("rose.api").pkey("api/groq"),
-      endpoint = "https://api.groq.com/openai/v1/chat/completions",
-      topic_prompt = topic_prompt,
-      topic = {
-        model = "llama-3.1-8b-instant",
-        params = {
-          chat = { temperature = 1.0, top_p = 1 },
-          command = { temperature = 1.0, top_p = 1 },
-        },
-      },
-      params = {
-        chat = { temperature = 1.5, top_p = 1 },
-        command = { temperature = 1.5, top_p = 1 },
-      },
-    },
-    github = {
-      api_key = require("rose.api").pkey("api/gh"),
-      endpoint = "https://models.inference.ai.azure.com/chat/completions",
-      topic_prompt = topic_prompt,
-      topic = {
-        model = "gpt-4o-mini",
-        params = {},
-      },
-      params = {
-        chat = { temperature = 0.7, top_p = 1 },
-        command = { temperature = 0.7, top_p = 1 },
-      },
-    },
-    nvidia = {
-      api_key = require("rose.api").pkey("api/nvidia"),
-      endpoint = "https://integrate.api.nvidia.com/v1/chat/completions",
-      topic_prompt = topic_prompt,
-      topic = {
-        model = "nvidia/llama-3.1-nemotron-51b-instruct",
-        params = { max_tokens = 64 },
-      },
-      params = {
-        chat = { temperature = 1.1, top_p = 1 },
-        command = { temperature = 1.1, top_p = 1 },
-      },
-    },
-    xai = {
-      api_key = require("rose.api").pkey("api/xai"),
-      endpoint = "https://api.x.ai/v1/chat/completions",
-      topic_prompt = topic_prompt,
-      topic = {
-        model = "grok-beta",
-        params = { max_tokens = 64 },
-      },
-      params = {
-        chat = { temperature = 1.1, top_p = 1 },
-        command = { temperature = 1.1, top_p = 1 },
-      },
-    },
+M.defaults = {
+  legacy = false,
+  trusted = false,
+  ollama = {
+    base_url = "http://127.0.0.1:11434",
+    model = "qwen2.5-coder:7b",
+    timeout = 120000,
+    allow_remote = false,
+    -- auto prefers vim.net when it can enforce transport safety; see :help rose-http.
+    transport = "auto",
   },
-  cmd_prefix = "Rose",
-  curl_params = {},
-  system_prompt = {
-    chat = system_chat_prompt,
-    command = system_command_prompt,
+  providers = { enabled = false, allow_cloud = false, provider = "ollama" },
+  speech = {
+    -- Master gate; cloud speech additionally requires providers.allow_cloud.
+    enabled = false,
+    stt = { provider = "auto", model = nil, language = "auto" },
+    tts = { provider = "auto", model = nil, voice = nil, format = "mp3" },
+    -- cmd is an argv table; nil detects pw-record/arecord/ffmpeg.
+    record = { cmd = nil, max_seconds = 60 },
+    play = { cmd = nil }, -- nil detects pw-play/paplay/aplay/mpv/ffplay
+    whisper = { url = nil }, -- local whisper.cpp server, loopback http only
+    piper = { cmd = nil, model = nil }, -- local piper TTS executable
+    max_audio_bytes = 25 * 1024 * 1024,
+    max_text_chars = 4096,
   },
-  state_dir = vim.fn.stdpath("data") .. "/rose/persisted",
-  chat_dir = vim.fn.stdpath("data") .. "/rose/chats",
-  chat_user_prefix = "🗨:",
-  llm_prefix = "🌹:",
-  chat_confirm_delete = true,
-  online_model_selection = true,
-  chat_shortcut_respond = { modes = { "n", "i", "v", "x" }, shortcut = "<leader>ar" },
-  chat_shortcut_delete = { modes = { "n", "i", "v", "x" }, shortcut = "<leader>ad" },
-  chat_shortcut_stop = { modes = { "n", "i", "v", "x" }, shortcut = "<leader>as" },
-  chat_shortcut_new = { modes = { "n", "i", "v", "x" }, shortcut = "<leader>ac" },
-  chat_free_cursor = false,
-  chat_prompt_buf_type = false,
-  toggle_target = "vsplit",
-  user_input_ui = "native",
-  style_popup_border = "single",
-  style_popup_margin_bottom = 8,
-  style_popup_margin_left = 1,
-  style_popup_margin_right = 2,
-  style_popup_margin_top = 2,
-  style_popup_max_width = 160,
-  command_prompt_prefix_template = "🤖 {{llm}} ~ ",
-  command_auto_select_response = true,
-  fzf_lua_opts = {
-    ["--ansi"] = true,
-    ["--sort"] = "",
-    ["--info"] = "inline",
-    ["--layout"] = "reverse",
-    ["--preview-window"] = "nohidden:right:75%",
+  hub = { python = "python3", max_workers = 4, xet = "auto", high_performance = false },
+  agent = {
+    max_iterations = 6,
+    max_repair_rounds = 1,
+    max_tool_calls = 8,
+    max_tool_result = 24000,
+    max_context = 120000,
   },
-  enable_spinner = true,
-  spinner_type = "dots",
-  chat_template = [[
-  # topic: ?
-  {{optional}}
-  ---
-
-  {{user}}]],
-  template_selection = [[
-  I have the following content from {{filename}}:
-
-  ```{{filetype}}
-  {{selection}}
-  ```
-
-  {{command}}
-  ]],
-  template_rewrite = [[
-  I have the following content from {{filename}}:
-
-  ```{{filetype}}
-  {{selection}}
-  ```
-
-  {{command}}
-  Respond exclusively with the snippet that should replace the selection above.
-  DO NOT RESPOND WITH ANY TYPE OF COMMENTS, JUST THE CODE!!!
-  ]],
-  template_append = [[
-  I have the following content from {{filename}}:
-
-  ```{{filetype}}
-  {{selection}}
-  ```
-
-  {{command}}
-  Respond exclusively with the snippet that should be appended after the selection above.
-  DO NOT RESPOND WITH ANY TYPE OF COMMENTS, JUST THE CODE!!!
-  DO NOT REPEAT ANY CODE FROM ABOVE!!!
-  ]],
-  template_prepend = [[
-  I have the following content from {{filename}}:
-  ```{{filetype}}
-  {{selection}}
-  ```
-  {{command}}
-  Respond exclusively with the snippet that should be prepended before the selection above.
-  DO NOT RESPOND WITH ANY TYPE OF COMMENTS, JUST THE CODE!!!
-  DO NOT REPEAT ANY CODE FROM ABOVE!!!
-  ]],
-  template_command = "{{command}}",
-
-  hooks = {
-    Info = function(plugin, params)
-      local bufnr = vim.api.nvim_create_buf(false, true)
-      local copy = vim.deepcopy(plugin)
-      for provider, _ in pairs(copy.providers) do
-        local s = copy.providers[provider].api_key
-        if s and type(s) == "string" then
-          copy.providers[provider].api_key = s:sub(1, 3) .. string.rep("*", #s - 6) .. s:sub(-3)
-        end
-      end
-      local plugin_info = string.format("Plugin structure:\n%s", vim.inspect(copy))
-      local params_info = string.format("Command params:\n%s", vim.inspect(params))
-      local lines = vim.split(plugin_info .. "\n" .. params_info, "\n")
-      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-      vim.api.nvim_win_set_buf(0, bufnr)
-    end,
-    Log = function(rose, _)
-      vim.cmd("edit " .. vim.fn.fnameescape(rose.logger._logfile))
-    end,
-    Status = function(rose, _)
-      local status_info = rose.get_status_info()
-      local provider = status_info.is_chat and status_info.prov.chat or status_info.prov.command
-      local status = string.format("%s (%s)", provider.name, status_info.model)
-      rose.logger.info(string.format("Current provider: %s", status))
-    end,
-    Implement = function(rose, params)
-      local template = [[
-      Consider the following content from {{filename}}:
-
-      ```{{filetype}}
-      {{selection}}
-      ```
-      Please rewrite this according to the contained instructions.
-      Respond exclusively with the snippet that should replace the selection above.
-      ]]
-      local model_obj = rose.get_model("command")
-      rose.logger.info("Implementing selection with model: " .. model_obj.name)
-      rose.Prompt(params, rose.ui.Target.rewrite, model_obj, nil, template)
-    end,
-    Ask = function(rose, params)
-      local template = [[
-      In light of your existing knowledge base, please generate a response that
-      is succinct and directly addresses the question posed. Prioritize accuracy
-      and relevance in your answer, drawing upon the most recent information
-      available to you. Aim to deliver your response in a concise manner,
-      focusing on the essence of the inquiry.
-      Question: {{command}}
-      ]]
-      local model_obj = rose.get_model("command")
-      rose.logger.info("Asking model: " .. model_obj.name)
-      rose.Prompt(params, rose.ui.Target.popup, model_obj, "🤖 Ask ~ ", template)
-    end,
+  diver = { lsp = {} },
+  debug = {},
+  checks = {},
+  scip = { path = "index.scip.json" },
+  flow = { cmd = { "flow", "serve" }, timeout = 600000, bridge = true },
+  mcp = { servers = {} },
+  webui = {
+    enabled = false,
+    host = "127.0.0.1",
+    port = 0,
+    open = true,
+    max_request_bytes = 16 * 1024 * 1024,
+    max_clients = 8,
+    idle_timeout_ms = 30000,
   },
 }
-M.merge_providers = function(default_providers, user_providers)
-  local result = {}
-  for provider, config in pairs(user_providers) do
-    result[provider] = vim.tbl_deep_extend("force", default_providers[provider] or {}, config)
+
+-- The web UI must never be reachable from another machine, so only these hosts are accepted.
+local loopback_hosts = { ["127.0.0.1"] = true, ["::1"] = true, ["localhost"] = true }
+
+local function integer(value, lo, hi, name)
+  assert(type(name) == "string", "integer(): name must be a string")
+  assert(lo <= hi, "integer(): lo must not exceed hi")
+  local range = name .. " must be an integer in " .. lo .. ".." .. hi
+  assert(type(value) == "number", range)
+  assert(value % 1 == 0, range)
+  assert(value >= lo, range)
+  assert(value <= hi, range)
+end
+
+-- Resolve the workspace root to a real, existing directory (absolute, no trailing slash).
+local function resolve_workspace(configured)
+  local uv = vim.uv or vim.loop
+  local root = configured or uv.cwd()
+  assert(type(root) == "string", "workspace must be a path")
+  assert(root ~= "", "workspace must be a path")
+  root = vim.fn.fnamemodify(root, ":p"):gsub("[/\\]+$", "")
+  if root == "" then
+    root = "/"
   end
-  return result
+  local real = assert(uv.fs_realpath(root), "workspace does not exist")
+  assert(uv.fs_stat(real).type == "directory", "workspace must be a directory")
+  return real
 end
-M.loaded = false
-M.options = nil
-M.providers = nil
-M.hooks = nil
-function M.setup(user_opts)
-  if vim.fn.has("nvim-0.10") == 0 then
-    return vim.notify("🌹 rose.nvim requires Neovim >= 0.10", vim.log.levels.ERROR)
-  end
-  M.options = vim.tbl_deep_extend("force", M.options, user_opts or {})
+
+local function validate_webui(webui)
+  assert(type(webui) == "table", "webui must be a table")
+  assert(type(webui.enabled) == "boolean", "webui.enabled must be a boolean")
+  assert(type(webui.open) == "boolean", "webui.open must be a boolean")
+  assert(loopback_hosts[webui.host] == true, "webui.host must be a loopback address")
+  integer(webui.port, 0, 65535, "webui.port")
+  integer(webui.max_request_bytes, 4096, 268435456, "webui.max_request_bytes")
+  integer(webui.max_clients, 1, 64, "webui.max_clients")
+  integer(webui.idle_timeout_ms, 100, 600000, "webui.idle_timeout_ms")
 end
-math.randomseed(os.time())
-local valid_provider_names = vim.tbl_keys(defaults.providers)
-if not utils.has_valid_key(opts.providers, valid_provider_names) then
-  return vim.notify("Invalid provider configuration", vim.log.levels.ERROR)
-end
-M.options = vim.tbl_deep_extend("force", {}, defaults, opts or {})
-M.providers = M.merge_providers(defaults.providers, opts.providers)
-M.options.providers = nil
-M.hooks = M.options.hooks
-M.options.hooks = nil
-local chat_dir_stat = vim.uv.fs_lstat(M.options.chat_dir)
-if chat_dir_stat and chat_dir_stat.type == "link" then
-  M.options.chat_dir = vim.fn.resolve(M.options.chat_dir)
-end
-local state_dir_stat = vim.uv.fs_lstat(M.options.state_dir)
-if state_dir_stat and state_dir_stat.type == "link" then
-  M.options.state_dir = vim.fn.resolve(M.options.state_dir)
-end
-for k, v in pairs(M.options) do
-  if type(v) == "string" and k:match("_dir$") then
-    local dir = v:gsub("/$", "")
-    M.options[k] = dir
-    vim.fn.mkdir(dir, "p")
-  end
-end
-M.available_providers = vim.tbl_keys(M.providers)
-local available_models = {}
-for _, prov_name in ipairs(M.available_providers) do
-  local _prov = init_provider(prov_name, M.providers[prov_name].endpoint, M.providers[prov_name].api_key)
-  available_models[prov_name] = _prov:get_available_models(false)
-end
-M.available_models = available_models
-table.sort(M.available_providers)
-M.register_hooks(M.hooks, M.options)
-M.cmd = {
-  ChatFinder = "chat_finder",
-  ChatStop = "stop",
-  ChatNew = "chat_new",
-  ChatToggle = "chat_toggle",
-  ChatPaste = "chat_paste",
-  ChatDelete = "chat_delete",
-  ChatResponde = "chat_respond",
-  Context = "context",
-  Model = "model",
-  Provider = "provider",
-  Retry = "retry",
-}
-M.chat_handler = ChatHandler:new(M.options, M.providers, M.available_providers, M.available_models, M.cmd)
-M.chat_handler:prepare_commands()
-M.add_default_commands(M.cmd, M.hooks, M.options)
-M.chat_handler:buf_handler()
-M.loaded = true
-M.Prompt = function(params, target, model_obj, prompt, template)
-  M.chat_handler:prompt(params, target, model_obj, prompt, template)
-end
-M.ChatNew = function(params, chat_prompt)
-  M.chat_handler:chat_new(params, chat_prompt)
-end
-M.get_model = function(model_type)
-  return M.chat_handler:get_model(model_type)
-end
-M.get_status_info = function()
-  return M.chat_handler:get_status_info()
-end
-M.register_hooks = function(hooks, options)
-  for hook, _ in pairs(hooks) do
-    vim.api.nvim_create_user_command(options.cmd_prefix .. hook, function(params)
-      M.call_hook(hook, params)
-    end, { nargs = "?", range = true, desc = "Rose LLM plugin" })
-  end
-end
-M.call_hook = function(name, params)
-  if M.hooks[name] ~= nil then
-    return M.hooks[name](M, params)
-  end
-  M.logger.error("The hook '" .. name .. "' does not exist.")
-end
-M.add_default_commands = function(commands, hooks, options)
-  local completions = {
-    ChatNew = { "popup", "split", "vsplit", "tabnew" },
-    ChatPaste = { "popup", "split", "vsplit", "tabnew" },
-    ChatToggle = { "popup", "split", "vsplit", "tabnew" },
-    Context = { "popup", "split", "vsplit", "tabnew" },
-  }
-  for cmd, cmd_func in pairs(commands) do
-    if hooks[cmd] == nil then
-      vim.api.nvim_create_user_command(options.cmd_prefix .. cmd, function(params)
-        M.chat_handler[cmd_func](M.chat_handler, params)
-      end, {
-        nargs = "?",
-        range = true,
-        desc = "Rose LLM plugin: " .. cmd,
-        complete = function()
-          if completions[cmd] then
-            return completions[cmd]
-          end
-          if cmd == "Model" then
-            return M.available_models[M.chat_handler.state:get_provider()]
-          elseif cmd == "Provider" then
-            return M.available_providers
-          end
-          return {}
-        end,
-      })
+
+-- Bound the number of named checks so a pathological config cannot stall startup.
+local checks_max = 256
+
+local function validate_checks(checks)
+  assert(type(checks) == "table", "checks must be a table of named commands")
+  local count = 0
+  for name, check in pairs(checks) do
+    count = count + 1
+    assert(count <= checks_max, "checks must define at most " .. checks_max .. " entries")
+    assert(type(name) == "string", "checks must be a table of named configurations")
+    assert(type(check) == "table", "checks must be a table of named configurations")
+    if check.filetypes ~= nil then
+      assert(type(check.filetypes) == "table", "check.filetypes must be an array")
     end
   end
 end
+
+function M.resolve(opts)
+  opts = opts or {}
+  assert(type(opts) == "table", "Rose setup options must be a table")
+  local config = vim.tbl_deep_extend("force", vim.deepcopy(M.defaults), opts)
+  if opts.agent and opts.agent.max_cycles ~= nil then
+    integer(opts.agent.max_cycles, 1, 4, "agent.max_cycles")
+    if opts.agent.max_repair_rounds == nil then
+      config.agent.max_repair_rounds = opts.agent.max_cycles - 1
+    end
+  end
+  assert(type(config.trusted) == "boolean", "trusted must be a boolean")
+  config.workspace = resolve_workspace(config.workspace)
+  integer(config.ollama.timeout, 1, 3600000, "ollama.timeout")
+  integer(config.agent.max_iterations, 1, 30, "agent.max_iterations")
+  integer(config.agent.max_repair_rounds, 0, 3, "agent.max_repair_rounds")
+  config.agent.max_cycles = config.agent.max_repair_rounds + 1
+  integer(config.agent.max_tool_calls, 1, 32, "agent.max_tool_calls")
+  integer(config.agent.max_tool_result, 256, 1048576, "agent.max_tool_result")
+  integer(config.agent.max_context, 1024, 4194304, "agent.max_context")
+  integer(config.flow.timeout, 1, 3600000, "flow.timeout")
+  validate_webui(config.webui)
+  assert(type(config.ollama.model) == "string", "ollama.model is required")
+  assert(config.ollama.model ~= "", "ollama.model is required")
+  assert(type(config.ollama.base_url) == "string", "ollama.base_url must be a string")
+  assert(type(config.providers) == "table", "providers must be a configuration table")
+  assert(type(config.hub) == "table", "hub must be a configuration table")
+  assert(type(config.speech) == "table", "speech must be a configuration table")
+  assert(type(config.speech.enabled) == "boolean", "speech.enabled must be a boolean")
+  -- Full per-field validation (provider names, format, limits) lives with the module. The
+  -- module may be absent from a partial install (the web UI tests hide it), so its absence is
+  -- an operating condition, not a programmer error.
+  local speech_ok, speech = pcall(require, "rose.speech")
+  if speech_ok then
+    speech.config(config)
+  else
+    -- Lua leaves a sentinel in package.loaded after a failed load, which would turn every later
+    -- require into "loop or previous error"; clear it so the web UI can report the real reason.
+    package.loaded["rose.speech"] = nil
+  end
+  validate_checks(config.checks)
+  assert(type(config.workspace) == "string", "resolved workspace must be a string")
+  return config
+end
+
+function M.setup(opts)
+  M.options = M.resolve(opts)
+  return M.options
+end
+
 return M

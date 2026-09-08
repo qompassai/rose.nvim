@@ -1,0 +1,14 @@
+# Local development and test artifacts, never part of the plugin.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+.testenv/
+build/
+dist/
+
+# Operator credentials are configured locally, not committed.
+.env
+.env.*
+!.env.example

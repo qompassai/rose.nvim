@@ -1,3 +1,7 @@
+> This directory includes historical documentation. For the dependency-free
+> native setup, read the repository README and [native reference](native.md).
+> Old provider/build instructions below are not the native installation path.
+
 <!-- /qompassai/rose.nvim/docs/README.md -->
 <!-- Qompass AI rose.nvim docs -->
 <!-- Copyright (C) 2025 Qompass AI, All rights reserved -->
