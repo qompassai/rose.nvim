@@ -1,0 +1,181 @@
+*rose.txt*  Native local Ollama workflows for Neovim
+
+ROSE                                                         *rose*
+
+Native setup requires no plugin manager, Plenary, fzf, API key, Rust build,
+secret-store access or automatic project configuration. Neovim 0.13 nightly is
+the primary target. vim.system (0.10+) and curl are required for HTTP/MCP.
+
+INSTALL                                                      *rose-setup*
+>
+  vim.pack.add({ { src = "https://github.com/qompassai/rose.nvim" } })
+  require("rose").setup({
+    workspace = vim.fn.getcwd(),
+    trusted = true, -- only for code/checks you trust
+    ollama = { model = "qwen2.5-coder:7b" },
+    checks = {
+      python_lint = { cmd = { "ruff", "check", "--isolated", "." }, kind = "lint",
+                      filetypes = { "python" }, timeout = 30000 },
+      unit = { cmd = { "python3", "-m", "unittest", "discover" },
+               filetypes = { "python" }, timeout = 60000 },
+    },
+  })
+<
+Alternatively use native pack/*/start or add the repository to 'runtimepath'.
+Install Ollama separately, run ollama serve, and pull your chosen tool-capable
+model. Defaults use http://127.0.0.1:11434. Setup never pulls or contacts models.
+The example also requires Ruff; use checks appropriate to your language.
+Time limits in Rose configuration are milliseconds. trusted defaults to false.
+
+COMMANDS                                                     *rose-commands*
+
+:RoseAsk [text]     Configured model chat, local by default.      *:RoseAsk*
+:RoseAgent [task]   Planner/coder/check/reviewer workflow.        *:RoseAgent*
+:RoseCheck [name]   Configured named check(s) only.               *:RoseCheck*
+:RoseFlow [task]    Explicit Flow MCP workflow.                   *:RoseFlow*
+:RoseStop          Cancel work; close processes and socket.      *:RoseStop*
+:RoseDictate       Record with a local tool, transcribe, insert.  *:RoseDictate*
+:RoseSpeak [text]  Speak range/text/last response, then play.    *:RoseSpeak*
+:RoseSpeechStop    Finish recording or cancel speech work.       *:RoseSpeechStop*
+:RoseSpeechStatus  Speech provider matrix; no provider contact.  *:RoseSpeechStatus*
+:RoseHubDownload   Explicit file download preview and approval.  *:RoseHubDownload*
+:RoseHubUpload     Exact remote manifest approval; trust needed. *:RoseHubUpload*
+:RoseHubPaper      Paper metadata or PDF/MD/BIB repository asset. *:RoseHubPaper*
+:RoseHubStatus     Transfer state, no automatic remote lookup.   *:RoseHubStatus*
+:RoseHubStop       Cancel; already committed uploads stay sent.  *:RoseHubStop*
+:RoseWebUI         Start loopback web UI; prints tokenised URL.  *:RoseWebUI*
+:RoseWebUIStop     Stop web UI; closes every client socket.      *:RoseWebUIStop*
+:RoseWebUIStatus   Web UI address, clients, requests served.     *:RoseWebUIStatus*
+:checkhealth rose  Show capabilities without contacting a model.
+
+Run from a project file. Chat is a scratch buffer, does not steal focus, and has
+q to hide, i to ask, Ctrl-C to stop. No chat history is written to disk.
+Only the coder may write. Model-selected shell/argv and file deletion do not
+exist. Default limits: 6 coder rounds, 2 planner/reviewer rounds, 8 calls/round.
+One repair cycle reruns coder/check/reviewer after a failed gate or rejection.
+agent.max_cycles=1 (max_repair_rounds=0) disables repair attempts.
+Missing checks/tools and exhausted rounds cannot verify a run. Every changed
+language needs an applicable named check AND completed editor_lint evidence or
+a passing named static check of kind lint/typecheck/diagnostics. A generic smoke
+check cannot replace missing language validation. Empty diagnostics never prove
+success. Reviewer JSON must approve: {approved:true,issues:[],summary:"..."}.
+Prose/rejection cannot approve; approval cannot override failed host checks.
+Save modified project buffers manually before running checks.
+
+API                                                          *rose-api*
+>
+  local rose = require("rose")
+  rose.ask("question", function(err, text) end)
+  rose.agent("task", function(err, report) end)
+  rose.check("unit", function(err, report) end)
+  rose.flow("task", function(err, report) end)
+  rose.stop()
+  rose.shutdown()
+<
+Callbacks suppress UI and receive errors first. Operations return cancel()
+tokens. Repeating setup cancels old work and replaces state idempotently.
+Tool API: require("rose.tools").setup(opts), .schemas(), .call(name,args).
+See docs/native.md for MCP server configuration and complete options.
+
+HTTP                                                         *rose-http*
+
+ollama.transport = "auto" uses native vim.net.request only when required safety
+controls exist. Current 0.13 nightly's API uses curl --location and local curl
+configuration with no supported opt-out. Auto therefore uses a hardened
+vim.system curl adapter instead: no shell, no curlrc, no proxy, no redirects,
+HTTP(S) only, body on stdin, bounded deadline. Curl is required in both modes.
+
+Explicit transport="native" uses the real method-first vim.net.request API,
+response.body and close(). Choose it only if you trust local curl configuration
+and endpoint redirects, which can send traffic outside the configured host.
+Remote Ollama URLs require allow_remote=true. Setup/health never read key values.
+
+OPTIONAL CLOUD AND HUB                                       *rose-cloud*
+
+Ollama remains default. Cloud requires both providers.enabled=true and
+providers.allow_cloud=true, plus explicit provider/API/endpoint/model. Tasks,
+source and tool results then leave the device. Environment keys are read only
+at request time. Supported adapters: OpenAI Responses/Chat, Anthropic Messages,
+xAI Grok Responses/Chat, NVIDIA hosted/local NIM, Perplexity Agent/Sonar.
+Sonar has no custom Rose tools. Tool capability requires per-model opt-in.
+See docs/providers.md for credential-origin controls and exact feature limits.
+
+model_request(spec,callback) exposes provider-origin bounded JSON or raw SSE;
+normalized chat is non-streaming. Multipart upload exists only for speech
+(|rose-speech|); no realtime/media-streaming/NGC deployment support is claimed.
+Private replay metadata is not shown in reports.
+
+Hub commands/wrappers use Python huggingface_hub and optional hf-xet. Configure
+hub.python for your environment; setup does not start it. Files must be selected
+explicitly and approved against a pinned-revision/cache/size/hash preview.
+Uploads require top-level workspace trust and exact-preview approval. No model
+tool or JSON approval flag can authorize transfer. Xet is capability-detected
+with conservative bounded concurrency and official HTTP fallback; no guaranteed
+speed. Paper assets are repository files, not arXiv publication.
+See docs/huggingface.md. Hugging Face credentials are used only on explicit
+execution; cancellation cannot undo remote commits.
+
+SPEECH                                                       *rose-speech*
+
+Off by default. speech.enabled=true allows local whisper.cpp (speech.whisper.url,
+loopback http only) and piper (speech.piper.cmd). Cloud speech also requires
+providers.enabled=true and providers.allow_cloud=true; audio and text then leave
+the device. Cloud providers: OpenAI (/v1/audio/transcriptions, /v1/audio/speech)
+and xAI (/v1/stt, /v1/tts). Anthropic and Perplexity have no speech API; NVIDIA
+speech requires a self-hosted Speech NIM and is not implemented. Keys are read
+from OPENAI_API_KEY / XAI_API_KEY only at request time. Limits: record.max_seconds
+(1..600), max_audio_bytes (upload and download, default 25 MiB), max_text_chars
+(default 4096; OpenAI 4096, xAI 15000). No realtime or streaming audio. Temp
+audio is stored under stdpath("cache")/rose/speech and deleted after use.
+See docs/speech.md.
+
+FLOW AND TRUST                                               *rose-security*
+
+Flow CLI is optional and installed separately. Rose starts:
+  flow serve --workspace /root [--nvim /private/socket] [--trusted]
+Use flow.cmd for an explicit operator configuration; Rose does not write or
+auto-discover Flow config. Flow needs pynvim only for reverse editor attachment.
+No TCP socket is started. A requested bridge failure aborts the operation; it
+never silently permits disk-only writes. bridge=false is an explicit operator
+opt-out from buffer protection. Cancel/timeout retains the writer lock until
+the owned Flow process exits and closes the socket; TERM escalates when needed.
+
+A Neovim socket permits arbitrary editor code from other same-user clients.
+Directory mode 0700 and socket mode 0600 are not a same-user sandbox. Disable
+flow.bridge when needed. Configured checks, plugins, servers and DAP adapters
+are executable trust boundaries. Trusted project code can access your account.
+
+Third-party MCP requires per-server trusted=true, read_only=true and explicit
+allow_tools. Read-only is operator policy, not an OS restriction on the server.
+Server requests other than ping receive method-not-found; no sampling or Lua/Ex
+execution is granted. Most processes inherit the normal user environment; cloud
+HTTP uses a restricted child environment with credentials supplied on stdin.
+
+LSP and diagnostics use native APIs; tools report missing capabilities honestly.
+SCIP requires decoded index.scip.json, not raw protobuf. Optional stdio DAP
+probes require a named configured adapter and are not a full debugging UI.
+Model debug tools are read-only status; named launch is manual.
+No vim.debug API is assumed.
+
+WEB UI                                                       *rose-webui*
+
+Off by default. `webui.enabled = true` then :RoseWebUI serves a single HTML page
+from inside Neovim on vim.uv TCP, bound to a loopback address only (127.0.0.1,
+::1 or localhost; anything else fails setup). Each start generates a random
+bearer token; every /api call needs `Authorization: Bearer <token>` or
+`?token=`. Plain HTTP, no TLS, no keep-alive, Content-Length required, chunked
+requests refused. Limits: webui.max_request_bytes (16 MiB), webui.max_clients
+(8), webui.idle_timeout_ms (30000); header block 8 KiB / 64 lines; 64 chat
+messages; 25 MiB audio upload. Routes: GET /, GET /api/health, GET /api/state,
+POST /api/chat, POST /api/flow/run, POST /api/speech/transcribe,
+POST /api/speech/speak. Speech routes report available=false when rose.speech
+is not installed. One Neovim instance per server. See docs/webui.md.
+
+LEGACY                                                       *rose-legacy*
+
+legacy=true explicitly opts into the unsupported historical provider/build
+snapshot, including possible secret reads and plugin dependencies. Known
+configuration initialization defects may make it fail. Native mode does not
+claim compatibility with old cloud/menu/download options. See docs/legacy.md.
+
+ vim:tw=78:ts=8:noet:ft=help:norl:
