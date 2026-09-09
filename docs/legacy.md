@@ -5,8 +5,11 @@ options into native setup expecting them to work: they are not native providers.
 
 1. Remove old build/download hooks and Plenary/fzf requirements from your Rose
    plugin specification. Other plugins may still need them.
-2. Configure `ollama.base_url`, `ollama.model`, workspace trust and named checks.
+2. Configure `rose.base_url`, `rose.model`, workspace trust and named checks.
    Nothing reads password stores or automatically chooses a cloud provider.
+   For older *native* Ollama-only configs (not historical cloud configs), the
+   compatibility selection/precedence rules are in
+   [configuration.md](configuration.md#provider-selection-and-migration-precedence).
 3. Replace menu/finder commands with `RoseAsk`, `RoseAgent`, `RoseCheck`,
    `RoseFlow` and `RoseStop`. `RoseConfig` and `RoseDownload` are not native
    commands; `rose_check()` returns false and `get_binary_path()` returns nil.

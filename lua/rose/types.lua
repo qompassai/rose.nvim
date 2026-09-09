@@ -3,7 +3,7 @@
 -- Native setup types. Historical RoseOptions belongs to rose.legacy.config.
 -- No runtime code: recursive JSON aliases describe wire data, not a traversal.
 
----@alias Rose.Provider "ollama"|"openai"|"anthropic"|"xai"|"nvidia"|"perplexity"
+---@alias Rose.Provider "rose"|"ollama"|"openai"|"anthropic"|"xai"|"nvidia"|"perplexity"
 ---@alias Rose.HTTPTransport "auto"|"curl"|"native"
 ---@alias Rose.ResponsesAPI "responses"|"chat"
 ---@alias Rose.PerplexityAPI "agent"|"sonar"
@@ -45,8 +45,8 @@
 ---@field include? string[] OpenAI adds reasoning.encrypted_content when store=false.
 ---@field system? string|Rose.JSONObject[] Anthropic system text/blocks; not with system messages.
 
----@class Rose.OllamaOptions
----@field [string] Rose.JSONValue Ollama-native options; Rose passes these through unchanged.
+---@class Rose.LocalOptions
+---@field [string] Rose.JSONValue Shared /api/chat model options, passed through unchanged.
 ---@field temperature? number Model sampling temperature; no Rose default.
 ---@field top_p? number Model nucleus sampling probability; no Rose default.
 ---@field top_k? integer Model top-k sampling count; no Rose default.
@@ -54,6 +54,32 @@
 ---@field num_predict? integer Generation-token limit; Ollama defines special negative values.
 ---@field seed? integer Random seed; server-defined semantics, no Rose default.
 ---@field stop? string[] Stop sequences; no Rose default.
+
+---@class Rose.OllamaOptions: Rose.LocalOptions
+
+---@class (exact) Rose.Config.TLS
+---@field ca_file? string Absolute POSIX PEM CA path; absent uses system trust store.
+---@field cert_file? string Absolute POSIX PEM client certificate path, paired with key_file.
+---@field key_file? string Absolute POSIX PEM private key path, paired with cert_file.
+---Paths: 1..4096 bytes, no controls/colons/passwords; read only by curl at request time.
+
+---@class Rose.Config.Rose
+---@field base_url? string Default http://127.0.0.1:11434; remote requires HTTPS and allow_remote.
+---@field model? string Nonempty installed model ID; default qwen2.5-coder:7b.
+---@field timeout? integer Request deadline in ms, 1..3600000; default 120000.
+---@field allow_remote? boolean Permit a non-loopback HTTPS endpoint; default false.
+---@field transport? "auto"|"curl" Default auto; all Rose requests require hardened curl.
+---@field options? Rose.LocalOptions Shared /api/chat JSON options; absent by default.
+---@field tls? Rose.Config.TLS Default {}; HTTPS requires paired client cert/key, optional CA.
+---Rose HTTPS requires TLS1.3-only and X25519MLKEM768-only support in curl's TLS backend.
+
+---@class Rose.Config.Rose.Resolved: Rose.Config.Rose
+---@field base_url string
+---@field model string
+---@field timeout integer
+---@field allow_remote boolean
+---@field transport "auto"|"curl"
+---@field tls Rose.Config.TLS
 
 ---@class Rose.Config.Ollama
 ---@field base_url? string HTTP(S) endpoint; default http://127.0.0.1:11434.
@@ -127,7 +153,7 @@
 ---@class Rose.Config.Providers
 ---@field enabled? boolean Cloud adapter gate; default false.
 ---@field allow_cloud? boolean Consent to send task/source/tool/audio/text data; default false.
----@field provider? Rose.Provider Chat selection; default ollama.
+---@field provider? Rose.Provider Default rose; legacy ollama-only input auto-selects ollama.
 ---@field openai? Rose.Config.OpenAI No setup default.
 ---@field anthropic? Rose.Config.Anthropic No setup default.
 ---@field xai? Rose.Config.XAI No setup default.
@@ -387,6 +413,7 @@
 ---@field trusted? boolean Permit configured local code/writes; default false, not an OS sandbox.
 ---@field max_file_bytes? integer File-tool bytes; adapter default 1048576, capped at 16777216.
 ---@field check_timeout? integer Aggregate editor_check ms, 1..120000; adapter default 120000.
+---@field rose? Rose.Config.Rose Native qompassai/rose backend, selected by default.
 ---@field ollama? Rose.Config.Ollama
 ---@field providers? Rose.Config.Providers
 ---@field speech? Rose.Config.Speech
@@ -404,6 +431,7 @@
 ---@class Rose.Config.Defaults: Rose.Config
 ---@field legacy boolean
 ---@field trusted boolean
+---@field rose Rose.Config.Rose.Resolved
 ---@field ollama Rose.Config.Ollama.Resolved
 ---@field providers Rose.Config.Providers.Resolved
 ---@field speech Rose.Config.Speech.Resolved

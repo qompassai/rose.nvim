@@ -108,6 +108,10 @@ function M.resolve(fullconfig)
   local providers = fullconfig.providers
   assert(type(providers) == "table", "providers configuration is required")
   assert(
+    providers.provider ~= "rose" and providers.provider ~= "ollama",
+    "local Rose/Ollama uses rose.native.model, not the cloud provider registry"
+  )
+  assert(
     providers.enabled == true and providers.allow_cloud == true,
     "cloud providers require providers.enabled=true AND providers.allow_cloud=true; task, "
       .. "source and tool output leave your device"

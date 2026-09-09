@@ -351,7 +351,7 @@ end
 
 function M.register_commands()
   for _, item in ipairs({
-    { "RoseAsk", M.ask, "Ask the configured model (local Ollama by default)" },
+    { "RoseAsk", M.ask, "Ask the configured model (local Rose by default)" },
     { "RoseAgent", M.agent, "Run planner, coder, validation and reviewer" },
     { "RoseFlow", M.flow, "Run the explicit Flow MCP workflow" },
   }) do
@@ -503,7 +503,7 @@ function M.setup(opts)
       notify_error(why)
       return nil, why
     end
-  elseif config.providers.provider ~= "ollama" then
+  elseif config.providers.provider ~= "rose" and config.providers.provider ~= "ollama" then
     local why = "cloud provider router unavailable"
     notify_error(why)
     return nil, why

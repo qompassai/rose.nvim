@@ -122,6 +122,10 @@ test("default require/setup has no subprocess, legacy dependency or secret reads
     assert(rose.setup({ workspace = workspace }))
     assert(rose.setup({ workspace = workspace }))
     equal(rose.options.trusted, false)
+    equal(rose.options.providers, { enabled = false, allow_cloud = false, provider = "rose" })
+    equal(rose.options.rose.base_url, "http://127.0.0.1:11434")
+    equal(rose.options.rose.model, "qwen2.5-coder:7b")
+    equal(rose.options.rose.tls, {})
     equal(rose.options.ollama.base_url, "http://127.0.0.1:11434")
     equal(rose.options.ollama.model, "qwen2.5-coder:7b")
     for _, name in ipairs({
@@ -653,20 +657,25 @@ test("local fixture starts", function()
 end)
 
 test("safe auto HTTP and actual vim.net request signatures work", function()
-  for _, transport in ipairs({ "auto", "native" }) do
-    local cfg =
-      config({ ollama = { base_url = "http://127.0.0.1:" .. port, transport = transport } })
-    local err, message = await(function(cb)
-      return require("rose.native.ollama").chat(
-        cfg.ollama,
-        { { role = "user", content = 'quotes " and newline\n' } },
-        nil,
-        cb
-      )
-    end)
-    assert(not err, err)
-    assert(type(message) == "table", "Ollama must return a message")
-    equal(message.content, "native HTTP okay")
+  for _, provider in ipairs({ "rose", "ollama" }) do
+    local transports = provider == "rose" and { "auto", "curl" } or { "auto", "curl", "native" }
+    for _, transport in ipairs(transports) do
+      local cfg = config({
+        providers = { provider = provider },
+        [provider] = { base_url = "http://127.0.0.1:" .. port, transport = transport },
+      })
+      local err, message = await(function(cb)
+        return require("rose.native.model").chat(
+          cfg,
+          { { role = "user", content = 'quotes " and newline\n' } },
+          nil,
+          cb
+        )
+      end)
+      assert(not err, err)
+      assert(type(message) == "table", "local backend must return a message")
+      equal(message.content, "native HTTP okay")
+    end
   end
 end)
 
@@ -1056,8 +1065,8 @@ test("scratch UI reuses buffer and restores native lifecycle", function()
 end)
 
 test("public commands preserve source context and chat history", function()
-  local rose, ollama = require("rose"), require("rose.native.ollama")
-  local actual_tools, actual_chat = package.loaded["rose.tools"], ollama.chat
+  local rose, adapter = require("rose"), require("rose.native.rose")
+  local actual_tools, actual_chat = package.loaded["rose.tools"], adapter.chat
   local observed, source, request_messages = {}, nil, {}
   local tools = fake_tools(function(name, _args)
     if name:match("^editor_") then
@@ -1066,7 +1075,7 @@ test("public commands preserve source context and chat history", function()
   end)
   tools.setup = function() end
   package.loaded["rose.tools"] = tools
-  ollama.chat = function(_, messages, _, cb)
+  adapter.chat = function(_, messages, _, cb)
     request_messages[#request_messages + 1] = vim.deepcopy(messages)
     local review = messages[1].content:find("independent", 1, true)
     vim.schedule(function()
@@ -1111,18 +1120,18 @@ test("public commands preserve source context and chat history", function()
     equal(last[#last].content, "second")
     rose.shutdown()
   end)
-  package.loaded["rose.tools"], ollama.chat = actual_tools, actual_chat
+  package.loaded["rose.tools"], adapter.chat = actual_tools, actual_chat
   assert(ok, failure)
 end)
 
 test("public writing workflows exclude concurrent writers and stop cancels", function()
-  local rose, ollama = require("rose"), require("rose.native.ollama")
-  local actual_tools, actual_chat = package.loaded["rose.tools"], ollama.chat
+  local rose, adapter = require("rose"), require("rose.native.rose")
+  local actual_tools, actual_chat = package.loaded["rose.tools"], adapter.chat
   local tools = fake_tools()
   tools.setup = function() end
   package.loaded["rose.tools"] = tools
   local model_cancelled, callback_error
-  ollama.chat = function()
+  adapter.chat = function()
     return {
       cancel = function()
         model_cancelled = true
@@ -1149,7 +1158,7 @@ test("public writing workflows exclude concurrent writers and stop cancels", fun
     equal(rose.writer, nil)
     rose.shutdown()
   end)
-  package.loaded["rose.tools"], ollama.chat = actual_tools, actual_chat
+  package.loaded["rose.tools"], adapter.chat = actual_tools, actual_chat
   assert(ok, failure)
 end)
 

@@ -17,6 +17,7 @@
 :RoseWebUIStop	rose.txt	/*:RoseWebUIStop*
 rose	rose.txt	/*rose*
 rose-api	rose.txt	/*rose-api*
+rose-backend	rose.txt	/*rose-backend*
 rose-cloud	rose.txt	/*rose-cloud*
 rose-commands	rose.txt	/*rose-commands*
 rose-config	rose.txt	/*rose-config*
@@ -25,5 +26,6 @@ rose-legacy	rose.txt	/*rose-legacy*
 rose-security	rose.txt	/*rose-security*
 rose-setup	rose.txt	/*rose-setup*
 rose-speech	rose.txt	/*rose-speech*
+rose-tls	rose.txt	/*rose-tls*
 rose-webui	rose.txt	/*rose-webui*
 rose.txt	rose.txt	/*rose.txt*

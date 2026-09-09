@@ -155,7 +155,9 @@ local function resolve_runtime(config, opts)
     or function(_, messages, schemas, done)
       return require("rose.native.model").chat(config, messages, schemas, done)
     end
-  local model_info = { provider = "ollama", model = config.ollama.model, cloud = false }
+  local selected = config.providers.provider
+  local local_config = selected == "ollama" and config.ollama or config.rose
+  local model_info = { provider = selected, model = local_config.model, cloud = false }
   local router_ok, router = pcall(require, "rose.native.model")
   if router_ok then
     model_info = router.describe(config)

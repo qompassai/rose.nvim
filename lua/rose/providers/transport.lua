@@ -1,4 +1,4 @@
--- Authenticated cloud transport, intentionally separate from native Ollama HTTP.
+-- Authenticated cloud transport, intentionally separate from native Rose/Ollama HTTP.
 -- Credentials AND request JSON travel only through an anonymous stdin pipe.
 -- No shell, temporary request files, curlrc, proxy, redirects, or inherited secrets.
 local M = { active = {} }

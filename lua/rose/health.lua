@@ -20,7 +20,7 @@ local function check_runtime()
   if capabilities.curl then
     vim.health.ok("curl executable available")
   else
-    vim.health.warn("curl missing: Ollama HTTP unavailable in both current transports")
+    vim.health.warn("curl missing: Rose/Ollama HTTP unavailable in both current transports")
   end
   if vim.lsp and vim.lsp.get_clients then
     vim.health.ok("Native LSP client discovery available")
@@ -29,6 +29,31 @@ local function check_runtime()
   end
   if vim.diagnostic and vim.diagnostic.get then
     vim.health.ok("Native diagnostics available")
+  end
+end
+
+local function check_local(options, model, info)
+  local valid, why = model.validate(options)
+  if not valid then
+    vim.health.error("Invalid " .. info.provider .. " endpoint configuration: " .. tostring(why))
+    return
+  end
+  local section = options[info.provider]
+  vim.health.info(info.provider .. " backend selected; cloud provider registry is not used")
+  if section.allow_remote then
+    vim.health.warn("Remote endpoint permission enabled; model requests may leave this device")
+  end
+  if info.provider == "rose" and section.base_url:match("^https://") then
+    vim.health.info(
+      "Rose HTTPS: hardened curl, TLS 1.3 only, X25519MLKEM768 only, paired client certificate/key. "
+        .. "TLS backend support and certificate validity are verified only at request time."
+    )
+    vim.health.info(
+      section.tls.ca_file and "Rose CA path configured (not read)"
+        or "Rose CA path absent; curl uses the system trust store"
+    )
+  elseif info.provider == "rose" then
+    vim.health.ok("Rose loopback HTTP; no API key or TLS credentials required")
   end
 end
 
@@ -55,7 +80,7 @@ local function check_model(options)
       )
     end
   else
-    vim.health.ok("Local Ollama is selected; cloud providers are not contacted")
+    check_local(options, model, info)
   end
 end
 
@@ -185,7 +210,7 @@ function M.check()
       .. "adapter; no full debug UI."
   )
   vim.health.info(
-    "No plenary, fzf-lua, Rust build or secret store required. Local Ollama needs no key; "
+    "No plenary, fzf-lua, Rust build or secret store required. Local Rose/Ollama needs no key; "
       .. "opt-in cloud/Hugging Face operations may require credentials."
   )
 end

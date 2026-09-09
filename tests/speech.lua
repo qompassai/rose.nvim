@@ -415,10 +415,15 @@ test("auto selection: local engine first, then the chat provider, else options",
   equal(result.provider, "xai")
   err = transcribe(config({ providers = { provider = "anthropic" } }), { path = temp_wav(10) })
   contains(err, "no speech provider selected (available: openai, xai)")
-  err = speak(config({ providers = { provider = "ollama", allow_cloud = false } }), { text = "x" })
-  contains(err, "none available")
-  err = transcribe(config({ providers = { provider = "ollama" } }), { path = temp_wav(10) })
-  contains(err, "available: openai, xai")
+  for _, local_provider in ipairs({ "rose", "ollama" }) do
+    err = speak(
+      config({ providers = { provider = local_provider, allow_cloud = false } }),
+      { text = "x" }
+    )
+    contains(err, "none available")
+    err = transcribe(config({ providers = { provider = local_provider } }), { path = temp_wav(10) })
+    contains(err, "available: openai, xai")
+  end
 end)
 
 test("unavailable providers return their reason instead of a request", function()
@@ -427,6 +432,7 @@ test("unavailable providers return their reason instead of a request", function(
     perplexity = "no speech API",
     nvidia = "self-hosted Speech NIM",
     ollama = "unknown speech provider",
+    rose = "unknown speech provider",
   }
   for provider, reason in pairs(unavailable) do
     contains(transcribe(config(), { path = temp_wav(10), provider = provider }), reason)

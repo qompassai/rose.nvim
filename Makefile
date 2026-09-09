@@ -3,7 +3,7 @@
 # Copyright (C) 2025 Qompass AI, All rights reserved
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
-.PHONY: test test-core test-tooling test-dap test-hub test-providers test-speech test-webui \
+.PHONY: test test-core test-rose test-tooling test-dap test-hub test-providers test-speech test-webui \
 	test-live test-legacy test-nil-safety test-legacy-nil-safety test-package-spec test-packages \
 	lint typecheck typecheck-all format help clean
 
@@ -29,7 +29,7 @@ help:
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-test: test-core test-tooling test-dap test-hub test-providers test-speech test-webui test-nil-safety test-legacy-nil-safety test-package-spec ## Run offline tests with no installed Neovim plugins
+test: test-core test-rose test-tooling test-dap test-hub test-providers test-speech test-webui test-nil-safety test-legacy-nil-safety test-package-spec ## Run offline tests with no installed Neovim plugins
 
 test-package-spec: ## Offline root lazy.lua command completeness; no installed managers
 	@NVIM="$(NVIM)" $(PYTHON) $(TEST_DIR)/package_fixture.py --static
@@ -52,6 +52,9 @@ typecheck-all: ## Strict whole-repository LuaLS gate, including tests and build 
 
 test-core: ## Native setup, HTTP, MCP, agent and validation tests
 	@$(NVIM) --headless -u NONE -l $(TEST_DIR)/core.lua
+
+test-rose: ## Rose defaults, migration, shared protocol and fail-closed TLS policy; no live service
+	@$(NVIM) --headless -u NONE -l $(TEST_DIR)/rose.lua
 
 test-tooling: ## Native tools; set DIVER_ROOT to test Diver completion too
 	@DIVER_ROOT="$(DIVER_ROOT)" $(NVIM) --headless -u NONE -l $(TEST_DIR)/tooling.lua

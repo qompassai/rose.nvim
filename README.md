@@ -1,13 +1,15 @@
 # Rose: local, native Neovim coding workflows
 
-Rose runs local Ollama chat and a bounded **planner → coder → validation → reviewer**
+Rose uses the local [qompassai/rose backend](https://github.com/qompassai/rose) by
+default for chat and a bounded **planner → coder → validation → reviewer**
 workflow inside Neovim. It also connects to Flow over MCP stdio, with an optional
 private native Neovim socket for Flow's editor tools. Cloud model APIs and
 Hugging Face transfers are separate, explicitly configured opt-ins.
 
 **Native mode is the default.** Setup does not load Plenary, fzf-lua, provider
 plugins, Rust libraries, secret stores, or project-local configuration. No plugin
-manager, cloud key, Diver installation, or Rose binary is required.
+manager, cloud key, Diver installation, or historical plugin binary is required.
+Model requests need a separately running Rose backend (or explicit Ollama compatibility).
 
 ## Install
 
@@ -33,7 +35,7 @@ vim.pack.add({
 local opts = {
   workspace = vim.fn.getcwd(),
   trusted = false, -- enable only for project code/checks you trust
-  ollama = { model = "qwen2.5-coder:7b" },
+  rose = { model = "qwen2.5-coder:7b" },
 }
 require("rose").setup(opts)
 ```
@@ -53,7 +55,7 @@ return {
   opts = {
     workspace = vim.fn.getcwd(),
     trusted = false,
-    ollama = { model = "qwen2.5-coder:7b" },
+    rose = { model = "qwen2.5-coder:7b" },
   },
 }
 ```
@@ -74,16 +76,63 @@ plugin manager or build step is necessary.
 
 ### Optional runtime tools
 
-Install [Ollama](https://ollama.com/), run `ollama serve` if it is not already
-running, and pull a model with tool support:
-
-```sh
-ollama pull qwen2.5-coder:7b
-```
+Install and start the [Rose backend](https://github.com/qompassai/rose) separately
+using its installation/model instructions. Configure an installed tool-capable
+model; the plugin defaults to `qwen2.5-coder:7b` on `http://127.0.0.1:11434`.
+The shared port with Ollama is intentional for protocol compatibility; the two
+servers cannot listen on the same address/port at the same time.
 
 The model is configurable; choose one your machine can run. Setup and health
 checks never pull a model or contact a service. `curl` must also be on `PATH`,
-including when using this nightly's curl-backed `vim.net.request`.
+including when using Ollama's explicitly selected native compatibility transport.
+
+### Ollama compatibility and migration
+
+The default is `providers.provider = "rose"` with a native `rose = {}` section.
+[Ollama](https://ollama.com/) remains an explicit alternative:
+
+```lua
+require("rose").setup({
+  providers = { provider = "ollama" },
+  ollama = { model = "qwen2.5-coder:7b" },
+})
+```
+
+An explicit `providers.provider` always wins. Without one, an `ollama` section
+with no `rose` section selects Ollama automatically, preserving older native
+configs (even `ollama = {}`). If both sections exist, Rose is selected by default.
+Both sections retain their overrides; inactive overrides are not copied into the
+selected backend or discarded. To switch an old config to Rose, move the desired
+overrides to `rose`, or explicitly select Rose and configure its section.
+These rules do not migrate historical `legacy=true` provider settings.
+
+### Secure remote Rose
+
+```lua
+require("rose").setup({
+  providers = { provider = "rose" },
+  rose = {
+    base_url = "https://rose.example.org:11434",
+    allow_remote = true,
+    tls = {
+      ca_file = "/absolute/path/server-ca.pem", -- optional: otherwise system trust store
+      cert_file = "/absolute/path/client.pem",
+      key_file = "/absolute/path/client-key.pem",
+    },
+  },
+})
+```
+
+Remote Rose rejects plaintext HTTP even with `allow_remote=true`. Every Rose
+HTTPS endpoint, including loopback, requires a client certificate/key pair.
+The server contract is **TLS 1.3 only, X25519MLKEM768 only, mTLS with its configured
+client CA**. The client enforces the same protocol/group with hardened curl and
+normal hostname/chain verification; no insecure fallback or custom cryptography.
+Use a curl TLS backend that supports this group (for example, an appropriate
+OpenSSL 3.5+ build); unsupported builds fail at request time. Paths must be
+absolute POSIX PEM file paths without colons/control characters; Windows drive
+paths, inline contents and embedded passwords are unsupported.
+See the [full TLS contract and limits](docs/configuration.md#rose-default-backend).
 
 ## Configuration
 
@@ -264,7 +313,8 @@ require("rose").setup({
 ```
 
 `RoseAsk` and `RoseAgent` use that selection; switching back to
-`providers.provider="ollama"` restores local routing. The same required static
+`providers.provider="rose"` restores the default backend routing; `"ollama"`
+selects compatibility routing. The same required static
 gate, reviewer approval, iteration limits and trust rules apply to cloud agents.
 Private provider replay data stays in memory, not the visible transcript/report.
 
@@ -378,17 +428,21 @@ debug adapters, Flow and configured MCP servers can execute code with your user
 account's permissions. Native workspace tools reject outside-root paths and
 symlink escapes; they do not confer trust on executable project code.
 
-Ollama defaults to loopback; remote base URLs require explicit
-`ollama.allow_remote=true`. No keys, password-store helpers or environment
+Rose defaults to literal-loopback HTTP (`127.0.0.1` or `[::1]`, not DNS `localhost`).
+Remote Rose requires HTTPS, `rose.allow_remote=true` and mTLS.
+Ollama compatibility retains its separate `ollama.allow_remote=true` opt-in.
+No TLS files, keys, password-store helpers or environment
 secrets are read during setup to configure providers. Explicit cloud requests
 look up only their configured environment-key name and use a restricted child
-environment. Other subprocesses normally inherit the user environment; do not
+environment. Rose HTTPS also removes ambient proxy/CA/crypto configuration and
+TLS key logging from its child environment. Other subprocesses normally inherit the user environment; do not
 run untrusted executables in an environment containing secrets.
 
 The `auto` HTTP adapter uses safe argv + stdin through `vim.system`: ignores
 curl configuration, does not follow redirects, bypasses proxies, and enforces a
-deadline. The installed `vim.net.request` cannot enforce those controls yet,
-so it is not automatically selected. Explicit `ollama.transport="native"` uses
+deadline and receive-time stdout/stderr caps. Rose always uses this adapter;
+`rose.transport="native"` is rejected because the installed `vim.net.request`
+cannot enforce the endpoint/redirect/curlrc/TLS controls. Explicit `ollama.transport="native"` uses
 the real API but **trusts local curl configuration and endpoint redirects**;
 those may send traffic beyond the configured host. See `:help rose-http`.
 
@@ -403,7 +457,7 @@ list. Read-only is the operator's assessment, **not enforcement of a subprocess
 sandbox**, and server annotations are not accepted as authorization. See the
 [MCP example](docs/native.md#third-party-mcp).
 
-**External binaries still needed:** Ollama + model and curl for local chat; installed
+**External binaries still needed:** Rose backend (or explicit Ollama) + model and curl for chat; installed
 language servers/checkers/indexers for those features; Flow and optional pynvim
 for integration; a configured DAP adapter for debug probes. No Rust/CMake build
 is needed for native Rose. Optional Hub transfers need Python and
@@ -445,7 +499,7 @@ speech backends.
 
 Core tests use local Python stdlib HTTP/MCP fixtures and a deterministic fake
 model, exercising the real Neovim transport and subprocess APIs without a GPU.
-They do **not** establish live Ollama/model quality, paid-provider availability,
+They do **not** establish live Rose/Ollama model quality, paid-provider availability,
 or Hub transfer throughput. The default suite performs no remote uploads or
 model downloads. Optional installed-language-tool and cross-repository Flow
 integration tests provide separate coverage. See [native API reference](docs/native.md)

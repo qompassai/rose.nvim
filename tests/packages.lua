@@ -122,7 +122,7 @@ end
 local function custom_opts()
   return {
     workspace = assert(vim.uv.cwd()),
-    ollama = { model = "offline-package-fixture", timeout = 4321 },
+    rose = { model = "offline-package-fixture", timeout = 4321 },
     agent = { max_iterations = 2 },
     speech = { max_text_chars = 512 },
     webui = { open = false, max_clients = 2 },
@@ -138,17 +138,21 @@ local function check_ready(custom)
   equal(options.workspace, assert(vim.uv.cwd()))
   equal(options.trusted, false)
   equal(options.legacy, false)
-  equal(options.providers, { enabled = false, allow_cloud = false, provider = "ollama" })
+  equal(options.providers, { enabled = false, allow_cloud = false, provider = "rose" })
+  equal(options.rose.allow_remote, false)
+  equal(options.rose.base_url, "http://127.0.0.1:11434")
+  equal(options.rose.model, custom and "offline-package-fixture" or "qwen2.5-coder:7b")
+  equal(options.rose.tls, {})
   equal(options.ollama.allow_remote, false)
   equal(options.ollama.base_url, "http://127.0.0.1:11434")
-  equal(options.ollama.model, custom and "offline-package-fixture" or "qwen2.5-coder:7b")
+  equal(options.ollama.model, "qwen2.5-coder:7b")
   equal(options.speech.enabled, false)
   equal(options.webui.enabled, false)
   equal(options.webui.host, "127.0.0.1")
   equal(options.webui.port, 0)
   equal(options.mcp.servers, {})
   if custom then
-    equal(options.ollama.timeout, 4321)
+    equal(options.rose.timeout, 4321)
     equal(options.agent.max_iterations, 2)
     equal(options.speech.max_text_chars, 512)
     equal(options.webui.open, false)
@@ -175,6 +179,14 @@ local function lifecycle(custom)
   check_ready(custom)
   local rose = require("rose")
   assert(rose.setup(custom_opts()))
+  assert(rose.setup(custom_opts()))
+  check_ready(true)
+  assert(rose.setup({ ollama = { model = "legacy-package-fixture" } }))
+  equal(rose.options.providers.provider, "ollama")
+  equal(rose.options.ollama.model, "legacy-package-fixture")
+  assert(rose.setup({ providers = { provider = "ollama" }, ollama = { timeout = 9876 } }))
+  equal(rose.options.providers.provider, "ollama")
+  equal(rose.options.ollama.timeout, 9876)
   assert(rose.setup(custom_opts()))
   check_ready(true)
   rose.shutdown()

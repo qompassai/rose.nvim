@@ -1,4 +1,4 @@
-*rose.txt*  Native local Ollama workflows for Neovim
+*rose.txt*  Native local Rose workflows for Neovim
 
 ROSE                                                         *rose*
 
@@ -20,7 +20,7 @@ vim.pack (requires a build with |vim.pack.add()| and a Git executable):
   local opts = {
     workspace = vim.fn.getcwd(),
     trusted = false, -- enable only for project code/checks you trust
-    ollama = { model = "qwen2.5-coder:7b" },
+    rose = { model = "qwen2.5-coder:7b" },
   }
   require("rose").setup(opts)
 <
@@ -35,7 +35,7 @@ lua/plugins/rose.lua when importing "plugins"):
     opts = {
       workspace = vim.fn.getcwd(),
       trusted = false,
-      ollama = { model = "qwen2.5-coder:7b" },
+      rose = { model = "qwen2.5-coder:7b" },
     },
   }
 <
@@ -45,8 +45,10 @@ command-triggered loading; lazy=false makes them available at startup.
 See https://lazy.folke.io/installation and https://lazy.folke.io/spec.
 
 Alternatively use native pack/*/start or add the repository to 'runtimepath'.
-Install Ollama separately, run ollama serve, and pull your chosen tool-capable
-model. Defaults use http://127.0.0.1:11434. Setup never pulls or contacts models.
+Install/start https://github.com/qompassai/rose separately and provision a
+tool-capable model using its instructions. Defaults use qwen2.5-coder:7b at
+http://127.0.0.1:11434. The shared Ollama port is intentional compatibility;
+do not run both servers on the same address/port. Setup never contacts models.
 Time limits in Rose configuration are milliseconds. trusted defaults to false.
 
 CONFIGURATION                                                *rose-config*
@@ -71,6 +73,26 @@ Edit options in your Neovim config, not the installed Rose files. Use the same
 table as lazy.nvim opts or pass it to setup after vim.pack.add. Omitted nested
 fields retain defaults. Repeating setup cancels ongoing work and replaces state.
 Use |rose-legacy| for the separate unsupported historical configuration.
+
+BACKEND SELECTION                                            *rose-backend*
+
+providers.provider defaults to "rose", using the native rose={} section.
+The native Rose and Ollama adapters share the supported /api/chat payload:
+{model, messages, stream=false, tools?, options?}; security policy is distinct.
+This is not the historical Qompass cloud adapter and requires no cloud consent.
+Explicit Ollama compatibility:
+>
+  require("rose").setup({
+    providers = { provider = "ollama" },
+    ollama = { model = "qwen2.5-coder:7b" },
+  })
+<
+Precedence: explicit providers.provider always wins. Otherwise, an ollama input
+section with no rose input section auto-selects Ollama, including ollama={}.
+With both sections or neither, the default is Rose. Both sections retain their
+overrides; nothing is silently copied into the other backend or discarded.
+Explicit Rose plus only Ollama overrides uses Rose defaults; move desired
+overrides into rose when migrating. Repeated setup resolves against defaults.
 
 COMMANDS                                                     *rose-commands*
 
@@ -124,20 +146,58 @@ See docs/native.md for MCP server configuration and complete options.
 
 HTTP                                                         *rose-http*
 
-ollama.transport = "auto" uses native vim.net.request only when required safety
-controls exist. Current 0.13 nightly's API uses curl --location and local curl
-configuration with no supported opt-out. Auto therefore uses a hardened
-vim.system curl adapter instead: no shell, no curlrc, no proxy, no redirects,
-HTTP(S) only, body on stdin, bounded deadline. Curl is required in both modes.
+rose.transport="auto" or "curl" uses hardened vim.system curl: no shell, curlrc,
+proxy, URL globbing or redirects; body on stdin, bounded deadline. Stdout has an
+8 MiB body + 4-byte status-suffix limit, stderr 64 KiB, and each stream at most
+4096 chunks, enforced while receiving. Overflow kills the process and returns
+one error. Cancellation ignores late events. Curl is required.
 
-Explicit transport="native" uses the real method-first vim.net.request API,
-response.body and close(). Choose it only if you trust local curl configuration
-and endpoint redirects, which can send traffic outside the configured host.
-Remote Ollama URLs require allow_remote=true. Setup/health never read key values.
+Rose rejects native transport for every request: current vim.net.request follows
+redirects and reads curl configuration without supported opt-outs. Plaintext
+Rose is restricted to literal 127.0.0.1/[::1], never DNS localhost. Remote Rose
+always requires HTTPS plus rose.allow_remote=true; see |rose-tls|.
+
+Only explicit ollama.transport="native" uses the method-first vim.net.request,
+response.body and close() APIs. It trusts curl configuration/endpoint redirects,
+which may send traffic outside the configured host; its size check occurs after
+the full response arrives. Remote Ollama needs ollama.allow_remote=true. Its
+native transport rejects TLS options; TLS credential fields are Rose-only.
+
+SECURE REMOTE ROSE                                           *rose-tls*
+>
+  require("rose").setup({
+    providers = { provider = "rose" },
+    rose = {
+      base_url = "https://rose.example.org:11434",
+      allow_remote = true,
+      tls = {
+        ca_file = "/absolute/path/server-ca.pem", -- optional system trust fallback
+        cert_file = "/absolute/path/client.pem",
+        key_file = "/absolute/path/client-key.pem",
+      },
+    },
+  })
+<
+Every Rose HTTPS request, including loopback, requires paired cert_file/key_file.
+CA is optional: normal curl system trust verifies the server when ca_file is
+absent. The server must use TLS 1.3 only, X25519MLKEM768 only and mTLS with a
+configured client CA. Hardened curl enforces --tlsv1.3 --tls-max 1.3
+--curves X25519MLKEM768, with normal hostname/chain verification (never insecure).
+Unsupported curl/TLS builds or invalid certificates fail; no downgrade retry.
+Use a curl TLS backend with this group, e.g. a suitable OpenSSL 3.5+ build.
+The plugin adds no crypto package and implements no custom cryptography.
+
+TLS values are absolute POSIX PEM file paths, 1..4096 bytes, no controls/colons.
+Windows drive paths, inline contents, PKCS#11 and embedded passwords are not
+supported. Protect private key files with OS permissions. Curl reads files only
+at request time; setup/health never read credentials, start services or probe
+the handshake. TLS file options on plaintext HTTP are rejected.
+Rose HTTPS clears ambient proxy/CA/crypto settings and TLS key logging from the
+child environment. See docs/configuration.md for the full field/default table.
 
 OPTIONAL CLOUD AND HUB                                       *rose-cloud*
 
-Ollama remains default. Cloud requires both providers.enabled=true and
+Rose remains default. Cloud requires both providers.enabled=true and
 providers.allow_cloud=true, plus explicit provider/API/endpoint/model. Tasks,
 source and tool results then leave the device. Environment keys are read only
 at request time. Supported adapters: OpenAI Responses/Chat, Anthropic Messages,

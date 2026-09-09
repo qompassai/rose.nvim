@@ -73,15 +73,16 @@ your partial options table with either vim.pack or lazy.nvim.
 {
   workspace = "/absolute/project", -- default resolved cwd; no config discovery
   trusted = false,
-  ollama = {
+  rose = {
     base_url = "http://127.0.0.1:11434",
     model = "qwen2.5-coder:7b",
     timeout = 120000,
     allow_remote = false,
-    transport = "auto", -- safe auto/curl; explicit native has trust caveats
-    -- options = { num_ctx = 8192 }, -- optional Ollama model settings
+    transport = "auto", -- hardened curl; native transport is rejected for Rose
+    tls = {}, -- HTTPS requires client cert_file/key_file and optional ca_file
+    -- options = { num_ctx = 8192 }, -- shared /api/chat model settings
   },
-  providers = { enabled = false, allow_cloud = false, provider = "ollama" },
+  providers = { enabled = false, allow_cloud = false, provider = "rose" },
   hub = { python = "python3", max_workers = 4, xet = "auto", high_performance = false },
   agent = {
     max_iterations = 6, -- coder rounds, 1..30; planner/reviewer each <=2
@@ -104,6 +105,13 @@ your partial options table with either vim.pack or lazy.nvim.
   webui = { enabled = false, host = "127.0.0.1", port = 0 }, -- loopback web UI; see docs/webui.md
 }
 ```
+
+The default backend is [qompassai/rose](https://github.com/qompassai/rose).
+An old Ollama-only input selects compatibility mode unless a provider is
+explicitly chosen; both sections default to Rose and retain separate overrides.
+For `rose.tls` fields, literal-loopback HTTP restrictions, TLS 1.3 /
+X25519MLKEM768 / mTLS requirements and exact precedence, see
+[the backend configuration contract](configuration.md#rose-default-backend).
 
 Optional `speech` (`:RoseDictate`, `:RoseSpeak`, `:RoseSpeechStop`,
 `:RoseSpeechStatus`) and `webui` (`:RoseWebUI`, `:RoseWebUIStop`,
@@ -244,7 +252,7 @@ Neither mode is a built-in TLS/HTTP engine independent of curl on this nightly.
 fixtures and curl. It covers real subprocess MCP lifecycle, actual `vim.net`
 and fallback HTTP, role boundaries, required checks, source-path coverage,
 private Flow socket creation and cleanup, and default dependency isolation.
-No live Ollama model, GPU or cloud service is used. Tooling tests and the
+No live Rose/Ollama model, GPU or cloud service is used. Tooling tests and the
 cross-repository Flow/pynvim roundtrip harness provide additional integration
 coverage; DAP tests are separate under `tests/integration_dap.lua`.
 

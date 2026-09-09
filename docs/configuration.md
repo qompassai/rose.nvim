@@ -9,7 +9,7 @@ options consumed outside `config.defaults`; the editor declarations are in
 ---@type Rose.Config
 local opts = {
   workspace = vim.fn.getcwd(),
-  ollama = { model = "qwen2.5-coder:7b" },
+  rose = { model = "qwen2.5-coder:7b" },
   agent = { max_repair_rounds = 1 },
 }
 local rose, err = require("rose").setup(opts)
@@ -75,7 +75,8 @@ The distinction between setup and operational defaults follows
 | `trusted` | `boolean` | `false` | Allow configured workspace writes/checks/lint/debug and trusted Flow work. Not an OS sandbox and not cloud consent. |
 | `max_file_bytes` | `integer` | absent | File-tool read/write/snapshot byte budget; adapter default `1048576` (1 MiB), capped at `16777216` (16 MiB). Use positive integers; current consumer does not validate a lower bound. |
 | `check_timeout` | `integer` | absent | Aggregate `editor_check` deadline; adapter default `120000`, range `1..120000` ms. This is not a single deadline for the entire agent workflow. |
-| `ollama` | `Rose.Config.Ollama` | table below | Local model adapter. |
+| `rose` | `Rose.Config.Rose` | table below | Default native qompassai/rose backend. |
+| `ollama` | `Rose.Config.Ollama` | table below | Explicit compatibility adapter; retained separately. |
 | `providers` | `Rose.Config.Providers` | table below | Explicit cloud chat/speech consent and endpoint configuration. |
 | `speech` | `Rose.Config.Speech` | table below | Explicit dictation/read-aloud configuration. |
 | `hub` | `Rose.Config.Hub` | table below | Explicit Hugging Face operations. |
@@ -104,7 +105,80 @@ See [model routing](../lua/rose/native/model.lua),
 [MCP calls](../lua/rose/native/servers.lua),
 [Hub approval](../lua/rose/hub.lua) and [setup](../lua/rose/init.lua).
 
-## Ollama
+## Rose default backend
+
+The default chat backend is [qompassai/rose](https://github.com/qompassai/rose),
+not a cloud provider and not an alias for the historical Qompass cloud adapter.
+The [native Rose adapter](../lua/rose/native/rose.lua) and the
+[Ollama compatibility adapter](../lua/rose/native/ollama.lua) share the
+[`/api/chat` protocol implementation](../lua/rose/native/local_chat.lua):
+`{ model, messages, stream = false, tools?, options? }`. Rose adds its own
+fail-closed endpoint/TLS policy; compatibility does not imply identical security
+or every server API feature. No SDK or crypto package is added.
+
+| Option | Type | Setup default | Purpose / allowed values |
+| --- | --- | --- | --- |
+| `rose.base_url` | `string` | `"http://127.0.0.1:11434"` | Base URL; `/api/chat` appended. Plain HTTP only on literal `127.0.0.1` or `[::1]`, not `localhost`. HTTPS elsewhere additionally requires `allow_remote`. No userinfo, queries, fragments, whitespace or backslashes; max 8192 URL bytes including route. |
+| `rose.model` | `string` | `"qwen2.5-coder:7b"` | Nonempty installed model ID; never installed or pulled by setup. |
+| `rose.timeout` | `integer` | `120000` | Request deadline, `1..3600000` ms. |
+| `rose.allow_remote` | `boolean` | `false` | Permit non-loopback HTTPS. Never permits remote plaintext; independent of cloud flags/workspace trust. |
+| `rose.transport` | `"auto" \| "curl"` | `"auto"` | Both use hardened curl. Explicit `"native"` is rejected for all Rose requests. |
+| `rose.options` | `Rose.LocalOptions` | absent | Shared model-native JSON options, passed unchanged; no sampling defaults. Same fields as `Rose.OllamaOptions` below. |
+| `rose.tls` | `Rose.Config.TLS` | `{}` | HTTPS client credentials and optional CA; nonempty TLS config is rejected for HTTP. |
+| `rose.tls.ca_file` | `string` | absent | Optional PEM CA bundle path for verifying the server. Omitted uses curl's system trust store. |
+| `rose.tls.cert_file` | `string` | absent | PEM client certificate chain file, mandatory for HTTPS and paired with `key_file`. |
+| `rose.tls.key_file` | `string` | absent | PEM client private key file, mandatory for HTTPS and paired with `cert_file`. |
+
+TLS paths must be **absolute POSIX paths**, 1..4096 bytes, with no control
+characters or colons. Spaces remain a single argv element. Windows drive paths,
+PKCS#11 URIs, inline PEM and `certificate:password` syntax are rejected. There
+is no inline secret/passphrase field; provision credentials outside the plugin
+and protect private-key files with OS permissions. Setup/health validate only
+configuration shape, never file existence, contents, certificate validity or
+handshake support. Curl reads the named files only during explicit requests.
+
+Every Rose HTTPS request requires mTLS, including HTTPS at loopback. The server
+must be configured for **TLS 1.3 only, X25519MLKEM768 only, and a client-auth CA**.
+The client requires `--tlsv1.3 --tls-max 1.3 --curves X25519MLKEM768`, paired
+`--cert`/`--key` paths, and optional `--cacert`. It keeps normal server-chain
+and hostname verification: there is no `--insecure`, weaker-curve retry, TLS 1.2
+fallback, or automatic switch to HTTP/native. Unsupported curl/TLS builds,
+missing/invalid certificates, untrusted CAs and incompatible servers report
+request errors. Choose a curl TLS backend with X25519MLKEM768 support (such as
+an appropriate OpenSSL 3.5+ build); the plugin does not install one.
+
+The [HTTP transport](../lua/rose/native/http.lua) ignores curlrc with
+`--disable` first, disables URL globbing, permits only HTTPS for secure requests,
+disables proxies, refuses redirects, passes JSON via stdin and bounds deadlines.
+Rose HTTPS clears the child environment except public executable/system paths,
+so ambient proxy, CA, crypto-provider and `SSLKEYLOGFILE` overrides are not used.
+There are no setup or health subprocesses to probe TLS capabilities.
+Curl output is bounded **while receiving**: 8 MiB response body plus a 4-byte
+status suffix, 64 KiB stderr, and 4096 chunks per stream. Overflow/read failure
+kills the process and completes once; cancellation and late events cannot
+publish results. These are adapter bounds, not extra setup fields.
+
+The default port `11434` intentionally matches Ollama's compatible protocol.
+Run only one server on that address/port, or configure a different port.
+
+### Provider selection and migration precedence
+
+1. Explicit `providers.provider` wins, whether Rose, Ollama or an opted-in cloud
+   provider. `providers.enabled`/`allow_cloud` alone do not select a cloud backend.
+2. Without an explicit provider, an `ollama` input section with no `rose` input
+   section selects `"ollama"` automatically, including `ollama = {}`.
+3. Otherwise the provider is `"rose"` (neither section, Rose-only, or both).
+
+Overrides in both sections are always retained separately. There is no implicit
+copy into the other backend: explicitly selecting Rose with only old Ollama
+overrides uses Rose defaults and leaves the inactive Ollama overrides intact.
+Move desired overrides into `rose` when migrating. Repeating setup resolves the
+new input against defaults, not the previous session's settings. This concerns
+native configuration only; `legacy=true` remains a separate unsupported schema.
+See [configuration resolution](../lua/rose/config.lua) and
+[model routing](../lua/rose/native/model.lua).
+
+## Ollama compatibility
 
 | Option | Type | Setup default | Purpose / allowed values |
 | --- | --- | --- | --- |
@@ -124,8 +198,10 @@ and model. See the [Ollama request adapter](../lua/rose/native/ollama.lua).
 `native` is **not** equivalent to the safe curl policy: the current native HTTP
 API cannot enforce all redirect/curlrc restrictions, while `auto` stays with the
 safe adapter. The HTTP adapter currently still requires `vim.system` and an
-installed `curl`, including before native selection; its 8 MiB response cap is
-not an `ollama.max_response` setup option. See
+installed `curl`, including before native selection. Curl uses the receive-time
+bounds above; native's 8 MiB body cap is only checked after its response arrives.
+Neither is an `ollama.max_response` setup option. TLS file options are Rose-only,
+and native transport rejects TLS options rather than silently ignoring them. See
 [`native/http.lua`](../lua/rose/native/http.lua).
 
 ## Cloud providers
@@ -134,7 +210,7 @@ not an `ollama.max_response` setup option. See
 | --- | --- | --- | --- |
 | `providers.enabled` | `boolean` | `false` | Cloud adapter gate; must be exactly `true` for cloud calls. |
 | `providers.allow_cloud` | `boolean` | `false` | Explicit consent for task/source/tool output and, when enabled, speech audio/text to leave the device. |
-| `providers.provider` | `"ollama" \| "openai" \| "anthropic" \| "xai" \| "nvidia" \| "perplexity"` | `"ollama"` | Chat provider selection; not an arbitrary extension registry. |
+| `providers.provider` | `"rose" \| "ollama" \| "openai" \| "anthropic" \| "xai" \| "nvidia" \| "perplexity"` | `"rose"` | Chat selection; old Ollama-only input follows the migration rules above. Local backends bypass the cloud registry. |
 | `providers.openai` | `Rose.Config.OpenAI` | absent | OpenAI configuration. |
 | `providers.anthropic` | `Rose.Config.Anthropic` | absent | Anthropic configuration. |
 | `providers.xai` | `Rose.Config.XAI` | absent | xAI configuration. |

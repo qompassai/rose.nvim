@@ -5,6 +5,14 @@ local M = {}
 M.defaults = {
   legacy = false,
   trusted = false,
+  rose = {
+    base_url = "http://127.0.0.1:11434",
+    model = "qwen2.5-coder:7b",
+    timeout = 120000,
+    allow_remote = false,
+    transport = "auto",
+    tls = {},
+  },
   ollama = {
     base_url = "http://127.0.0.1:11434",
     model = "qwen2.5-coder:7b",
@@ -13,7 +21,7 @@ M.defaults = {
     -- auto prefers vim.net when it can enforce transport safety; see :help rose-http.
     transport = "auto",
   },
-  providers = { enabled = false, allow_cloud = false, provider = "ollama" },
+  providers = { enabled = false, allow_cloud = false, provider = "rose" },
   speech = {
     -- Master gate; cloud speech additionally requires providers.allow_cloud.
     enabled = false,
@@ -109,6 +117,24 @@ local function validate_checks(checks)
   end
 end
 
+local function validate_local(section, name)
+  assert(type(section) == "table", name .. " must be a configuration table")
+  integer(section.timeout, 1, 3600000, name .. ".timeout")
+  assert(type(section.model) == "string" and section.model ~= "", name .. ".model is required")
+  assert(type(section.base_url) == "string", name .. ".base_url must be a string")
+  assert(type(section.allow_remote) == "boolean", name .. ".allow_remote must be a boolean")
+  assert(
+    section.transport == "auto"
+      or section.transport == "curl"
+      or (name == "ollama" and section.transport == "native"),
+    name .. ".transport must be auto or curl (native is Ollama-only)"
+  )
+  assert(
+    section.options == nil or type(section.options) == "table",
+    name .. ".options must be a table"
+  )
+end
+
 ---Merge native setup input and validate core bounds; invalid input raises an error.
 ---@param opts? Rose.Config
 ---@return Rose.Config.Resolved
@@ -116,6 +142,16 @@ function M.resolve(opts)
   opts = opts or {}
   assert(type(opts) == "table", "Rose setup options must be a table")
   local config = vim.tbl_deep_extend("force", vim.deepcopy(M.defaults), opts)
+  assert(type(config.providers) == "table", "providers must be a configuration table")
+  -- Preserve old Ollama-only overrides, including an explicitly empty section.
+  -- Explicit provider always wins; with both sections present the default is Rose.
+  if
+    opts.ollama ~= nil
+    and opts.rose == nil
+    and (not opts.providers or opts.providers.provider == nil)
+  then
+    config.providers.provider = "ollama"
+  end
   if opts.agent and opts.agent.max_cycles ~= nil then
     integer(opts.agent.max_cycles, 1, 4, "agent.max_cycles")
     if opts.agent.max_repair_rounds == nil then
@@ -124,7 +160,10 @@ function M.resolve(opts)
   end
   assert(type(config.trusted) == "boolean", "trusted must be a boolean")
   config.workspace = resolve_workspace(config.workspace)
-  integer(config.ollama.timeout, 1, 3600000, "ollama.timeout")
+  validate_local(config.rose, "rose")
+  validate_local(config.ollama, "ollama")
+  local tls_error = require("rose.native.http").validate_tls(config.rose.tls)
+  assert(not tls_error, tls_error)
   integer(config.agent.max_iterations, 1, 30, "agent.max_iterations")
   integer(config.agent.max_repair_rounds, 0, 3, "agent.max_repair_rounds")
   config.agent.max_cycles = config.agent.max_repair_rounds + 1
@@ -133,10 +172,8 @@ function M.resolve(opts)
   integer(config.agent.max_context, 1024, 4194304, "agent.max_context")
   integer(config.flow.timeout, 1, 3600000, "flow.timeout")
   validate_webui(config.webui)
-  assert(type(config.ollama.model) == "string", "ollama.model is required")
-  assert(config.ollama.model ~= "", "ollama.model is required")
-  assert(type(config.ollama.base_url) == "string", "ollama.base_url must be a string")
-  assert(type(config.providers) == "table", "providers must be a configuration table")
+  assert(type(config.providers.enabled) == "boolean", "providers.enabled must be a boolean")
+  assert(type(config.providers.allow_cloud) == "boolean", "providers.allow_cloud must be a boolean")
   assert(type(config.hub) == "table", "hub must be a configuration table")
   assert(type(config.speech) == "table", "speech must be a configuration table")
   assert(type(config.speech.enabled) == "boolean", "speech.enabled must be a boolean")

@@ -22,7 +22,7 @@ git diff --check
 ```
 
 Select the focused target from `Makefile`: `test-core`, `test-tooling`, `test-dap`,
-`test-hub`, `test-providers`, `test-speech`, `test-webui`, `test-nil-safety`
+`test-hub`, `test-rose`, `test-providers`, `test-speech`, `test-webui`, `test-nil-safety`
 or `test-legacy-nil-safety`. The last target uses isolated plugin stubs, not the
 historical real-Plenary suite.
 Supply actual executable paths

@@ -1,6 +1,10 @@
 # Model providers
 
-Rose defaults to native **Ollama**. No plugin, provider SDK, credential manager, key
+Rose defaults to the native **[qompassai/rose backend](https://github.com/qompassai/rose)**;
+`providers.provider = "ollama"` selects compatibility mode. Both local backends
+bypass this cloud registry. Old Ollama-only native configs auto-select Ollama;
+see [selection precedence and TLS configuration](configuration.md#rose-default-backend).
+No plugin, provider SDK, credential manager, key
 prompt, network request, or environment-key check is run during provider
 `require`, setup validation, or capability inspection.
 
@@ -97,7 +101,7 @@ call types. Raw API access does not grant a model new local tools or permissions
 
 ## Configuration
 
-Use Neovim 0.10+ and `curl`. Native Ollama keeps its existing HTTP implementation;
+Use Neovim 0.10+ and `curl`. Native Rose/Ollama use their separate local HTTP transport;
 cloud traffic uses a separate bounded authenticated transport.
 
 ```lua

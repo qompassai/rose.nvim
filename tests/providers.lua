@@ -188,7 +188,7 @@ test("Sonar is search/citations, never advertised as generic custom tools", func
   assert(not router.validate(cfg))
 end)
 
-test("Ollama remains default and receives its original config", function()
+test("legacy Ollama-only routing receives its original config", function()
   local module, got = require("rose.native.ollama"), nil
   local original = module.chat
   module.chat = function(cfg, _messages, _schemas, cb)
