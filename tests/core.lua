@@ -194,7 +194,7 @@ test("cloud setup requires explicit consent without reading keys or making reque
     }
     local configured, why = rose.setup(opts)
     equal(configured, nil)
-    assert(why and why:find("allow_cloud", 1, true))
+    assert(type(why) == "string" and why:find("allow_cloud", 1, true))
     opts.providers.allow_cloud = true
     assert(rose.setup(opts))
     local info = require("rose.native.model").describe(rose.options)

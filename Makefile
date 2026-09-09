@@ -4,7 +4,8 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .PHONY: test test-core test-tooling test-dap test-hub test-providers test-speech test-webui \
-	test-live test-legacy test-nil-safety test-legacy-nil-safety lint typecheck typecheck-all format help clean
+	test-live test-legacy test-nil-safety test-legacy-nil-safety test-package-spec test-packages \
+	lint typecheck typecheck-all format help clean
 
 TEST_DIR := tests
 PLUGIN_DIR := lua
@@ -13,6 +14,7 @@ BUILD_DIR := build
 NVIM ?= nvim
 PYTHON ?= python3
 DIVER_ROOT ?=
+LAZY_ROOT ?=
 LUACHECK ?= luacheck
 STYLUA ?= stylua
 LUALS ?= lua-language-server
@@ -27,7 +29,13 @@ help:
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-test: test-core test-tooling test-dap test-hub test-providers test-speech test-webui test-nil-safety test-legacy-nil-safety ## Run offline tests with no installed Neovim plugins
+test: test-core test-tooling test-dap test-hub test-providers test-speech test-webui test-nil-safety test-legacy-nil-safety test-package-spec ## Run offline tests with no installed Neovim plugins
+
+test-package-spec: ## Offline root lazy.lua command completeness; no installed managers
+	@NVIM="$(NVIM)" $(PYTHON) $(TEST_DIR)/package_fixture.py --static
+
+test-packages: ## Real vim.pack local install/load and lazy.nvim loading; requires LAZY_ROOT checkout
+	@NVIM="$(NVIM)" LAZY_ROOT="$(LAZY_ROOT)" $(PYTHON) $(TEST_DIR)/package_fixture.py
 
 test-nil-safety: ## Offline missing-file, nullable handle and protocol regressions
 	@$(NVIM) --headless -u NONE -l $(TEST_DIR)/nil_safety.lua

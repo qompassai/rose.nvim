@@ -7,25 +7,70 @@ secret-store access or automatic project configuration. Neovim 0.13 nightly is
 the primary target. vim.system (0.10+) and curl are required for HTTP/MCP.
 
 INSTALL                                                      *rose-setup*
+
+Choose one manager. Both use the same setup options; see |rose-config|.
+Native mode needs no build step or plugin dependencies.
+
+vim.pack (requires a build with |vim.pack.add()| and a Git executable):
 >
-  vim.pack.add({ { src = "https://github.com/qompassai/rose.nvim" } })
-  require("rose").setup({
-    workspace = vim.fn.getcwd(),
-    trusted = true, -- only for code/checks you trust
-    ollama = { model = "qwen2.5-coder:7b" },
-    checks = {
-      python_lint = { cmd = { "ruff", "check", "--isolated", "." }, kind = "lint",
-                      filetypes = { "python" }, timeout = 30000 },
-      unit = { cmd = { "python3", "-m", "unittest", "discover" },
-               filetypes = { "python" }, timeout = 60000 },
-    },
+  vim.pack.add({
+    { src = "https://github.com/qompassai/rose.nvim", version = "main" },
   })
+  ---@type Rose.Config
+  local opts = {
+    workspace = vim.fn.getcwd(),
+    trusted = false, -- enable only for project code/checks you trust
+    ollama = { model = "qwen2.5-coder:7b" },
+  }
+  require("rose").setup(opts)
 <
+lazy.nvim (after installing lazy.nvim; add to its plugin specs, e.g.
+lua/plugins/rose.lua when importing "plugins"):
+>
+  return {
+    "qompassai/rose.nvim",
+    main = "rose",
+    lazy = false,
+    ---@type Rose.Config
+    opts = {
+      workspace = vim.fn.getcwd(),
+      trusted = false,
+      ollama = { model = "qwen2.5-coder:7b" },
+    },
+  }
+<
+lazy.nvim calls require("rose").setup(opts) itself. Do not call setup again
+from init/config. The repository's lazy.lua lists all Rose commands for
+command-triggered loading; lazy=false makes them available at startup.
+See https://lazy.folke.io/installation and https://lazy.folke.io/spec.
+
 Alternatively use native pack/*/start or add the repository to 'runtimepath'.
 Install Ollama separately, run ollama serve, and pull your chosen tool-capable
 model. Defaults use http://127.0.0.1:11434. Setup never pulls or contacts models.
-The example also requires Ruff; use checks appropriate to your language.
 Time limits in Rose configuration are milliseconds. trusted defaults to false.
+
+CONFIGURATION                                                *rose-config*
+
+The complete native option reference is docs/configuration.md in the installed
+repository. It lists defaults, optional fields, accepted values, units, bounds
+and consent requirements. Provider, speech, Hub, debug and MCP subfields are
+included, not just the entries present in the defaults table.
+
+LuaCATS schema: lua/rose/types.lua. Annotate partial user options with
+---@type Rose.Config for field completion and hover descriptions. Finite choices
+have literal-union types; commands are argv arrays; nested tables have named
+classes. Open-ended paths, model IDs and environment-variable names remain
+strings with documented meanings, not misleading closed enums.
+
+Defaults/resolution: lua/rose/config.lua. Optional fields absent from defaults
+are still documented and typed. To inspect the resolved configuration:
+>
+  :lua vim.print(require("rose").options)
+<
+Edit options in your Neovim config, not the installed Rose files. Use the same
+table as lazy.nvim opts or pass it to setup after vim.pack.add. Omitted nested
+fields retain defaults. Repeating setup cancels ongoing work and replaces state.
+Use |rose-legacy| for the separate unsupported historical configuration.
 
 COMMANDS                                                     *rose-commands*
 

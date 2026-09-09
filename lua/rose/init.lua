@@ -483,6 +483,8 @@ local function notify_setup_warnings(config, router)
   end
 end
 
+---Configure native Rose. See :help rose-config and docs/configuration.md.
+---@param opts? Rose.Config Partial native options; omitted fields retain defaults.
 function M.setup(opts)
   opts = opts or {}
   assert(type(opts) == "table", "Rose setup options must be a table")

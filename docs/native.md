@@ -64,6 +64,11 @@ shell command. Statuses include `ok`, `failed`, `unavailable`, `timeout`, `stale
 
 ### Configuration
 
+For every supported setup field, its precise LuaCATS type, default and purpose,
+see the [complete configuration reference](configuration.md). The following is
+a selection, not an exhaustive defaults table. Use `---@type Rose.Config` on
+your partial options table with either vim.pack or lazy.nvim.
+
 ```lua
 {
   workspace = "/absolute/project", -- default resolved cwd; no config discovery

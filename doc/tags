@@ -19,6 +19,7 @@ rose	rose.txt	/*rose*
 rose-api	rose.txt	/*rose-api*
 rose-cloud	rose.txt	/*rose-cloud*
 rose-commands	rose.txt	/*rose-commands*
+rose-config	rose.txt	/*rose-config*
 rose-http	rose.txt	/*rose-http*
 rose-legacy	rose.txt	/*rose-legacy*
 rose-security	rose.txt	/*rose-security*

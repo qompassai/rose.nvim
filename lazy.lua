@@ -13,6 +13,14 @@ return {
     "RoseHubPaper",
     "RoseHubStop",
     "RoseHubStatus",
+    "RoseDictate",
+    "RoseSpeak",
+    "RoseSpeechStop",
+    "RoseSpeechStatus",
+    "RoseWebUI",
+    "RoseWebUIStop",
+    "RoseWebUIStatus",
   },
+  ---@type Rose.Config
   opts = { trusted = false },
 }

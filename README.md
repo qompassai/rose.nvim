@@ -15,40 +15,64 @@ Neovim **0.13 nightly** is the primary target. Native operations require
 `vim.system` (0.10+); older or missing APIs are reported as unavailable rather
 than successful. The core is tested on `v0.13.0-dev-1558+g8d5ebdf986`.
 
-With Neovim's built-in package manager:
+Choose **one** installation method. Native mode needs no build step or plugin
+dependencies; both managers use the same `require("rose").setup(opts)` API.
+
+### vim.pack
+
+Put this in `init.lua` on a Neovim build with `vim.pack` available
+(`:help vim.pack.add`). Git is needed for installation. Rose can be required
+immediately after [`vim.pack.add`](https://neovim.io/doc/user/pack/).
 
 ```lua
-vim.pack.add({ { src = "https://github.com/qompassai/rose.nvim" } })
-
-require("rose").setup({
-  workspace = vim.fn.getcwd(),
-  -- Enable only for a project whose code and checks you trust.
-  trusted = true,
-  ollama = {
-    base_url = "http://127.0.0.1:11434",
-    model = "qwen2.5-coder:7b",
-    timeout = 120000, -- milliseconds
-  },
-  checks = {
-    python_lint = {
-      cmd = { "ruff", "check", "--isolated", "." },
-      kind = "lint",
-      filetypes = { "python" },
-      timeout = 30000,
-    },
-    unit = {
-      cmd = { "python3", "-m", "unittest", "discover" },
-      filetypes = { "python" },
-      timeout = 60000,
-    },
-  },
+vim.pack.add({
+  { src = "https://github.com/qompassai/rose.nvim", version = "main" },
 })
+
+---@type Rose.Config
+local opts = {
+  workspace = vim.fn.getcwd(),
+  trusted = false, -- enable only for project code/checks you trust
+  ollama = { model = "qwen2.5-coder:7b" },
+}
+require("rose").setup(opts)
 ```
 
-Alternatively, put the repository on `'runtimepath'` using a native `pack/*/start`
-directory or `vim.opt.rtp:append("/absolute/path/to/rose.nvim")`, then call `setup`.
-On Neovim without `vim.pack`, use that native-package path. No third-party plugin
-manager or build step is necessary.
+### lazy.nvim
+
+With [lazy.nvim installed](https://lazy.folke.io/installation), add this spec to
+your plugin list, or return it from `lua/plugins/rose.lua` when using
+`{ import = "plugins" }`:
+
+```lua
+return {
+  "qompassai/rose.nvim",
+  main = "rose",
+  lazy = false, -- simple startup loading; no service starts during setup
+  ---@type Rose.Config
+  opts = {
+    workspace = vim.fn.getcwd(),
+    trusted = false,
+    ollama = { model = "qwen2.5-coder:7b" },
+  },
+}
+```
+
+[`opts` invokes `require("rose").setup(opts)`](https://lazy.folke.io/spec)
+automatically; do not call setup a second time in `init` or `config`. The
+repository's [optional lazy specification](lazy.lua) also lists every Rose
+command for command-triggered loading, including speech and Web UI commands.
+Use `lazy = false` as above if you want all commands and health checks available
+at startup.
+
+### Native packages without vim.pack
+
+Put the repository in a `pack/*/start` directory on `'packpath'`, or use
+`vim.opt.rtp:append("/absolute/path/to/rose.nvim")`, then call `setup`.
+This is also an option on Neovim builds without `vim.pack`; no third-party
+plugin manager or build step is necessary.
+
+### Optional runtime tools
 
 Install [Ollama](https://ollama.com/), run `ollama serve` if it is not already
 running, and pull a model with tool support:
@@ -60,8 +84,52 @@ ollama pull qwen2.5-coder:7b
 The model is configurable; choose one your machine can run. Setup and health
 checks never pull a model or contact a service. `curl` must also be on `PATH`,
 including when using this nightly's curl-backed `vim.net.request`.
-The example's static check additionally requires the `ruff` executable; replace
-the checks with trusted commands appropriate for your project's languages.
+
+## Configuration
+
+All native setup options have one [complete reference](docs/configuration.md):
+names, nested fields, defaults, purpose, types, valid choices, units and trust
+requirements. In Neovim, start at `:help rose-config`.
+
+- **Types:** [LuaCATS configuration definitions](lua/rose/types.lua) provide
+  `Rose.Config` completion and field descriptions for partial user options.
+  Fixed choices use literal unions; commands use argv arrays, maps have typed
+  values, and integer limits describe their units.
+- **Defaults and resolution:** [lua/rose/config.lua](lua/rose/config.lua)
+  contains native defaults and merges/validates setup. Some optional keys have
+  no default entry, so use the reference rather than treating that table as
+  an exhaustive schema.
+- **Inspection:** After setup, `:lua vim.print(require("rose").options)` shows
+  the resolved configuration. Change options in your own Neovim config, not
+  in the installed plugin. Repeating setup cancels active work.
+
+Both install methods accept the same options. For a trusted Python project,
+add named checks to the `opts` table:
+
+```lua
+---@type Rose.Config
+local opts = {
+  trusted = true, -- executable project/check trust, not a sandbox
+  checks = {
+    python_lint = {
+      cmd = { "ruff", "check", "--isolated", "." },
+      kind = "lint",
+      filetypes = { "python" },
+      timeout = 30000, -- milliseconds
+    },
+    unit = {
+      cmd = { "python3", "-m", "unittest", "discover" },
+      filetypes = { "python" },
+      timeout = 60000,
+    },
+  },
+}
+```
+
+Use that table as lazy.nvim's `opts`, or pass it to `require("rose").setup(opts)`
+after `vim.pack.add`. The named checks require Ruff and Python; replace them
+with commands appropriate for your project. Historical `legacy = true`
+configuration is separate and unsupported; see [legacy notes](docs/legacy.md).
 
 ## Use
 
@@ -353,7 +421,20 @@ nightly. See [migration guide](docs/legacy.md) before enabling it.
 nvim --headless -u NONE -l tests/core.lua
 # Run native core, tooling, DAP, Hub, provider, speech and web UI fixture suites together:
 make test NVIM=nvim PYTHON=python3
+
+# Real package managers, isolated from your Neovim config; no remote fetches:
+make test-packages NVIM=nvim PYTHON=python3 LAZY_ROOT=/path/to/lazy.nvim
+
+# Strict LuaCATS/LuaLS validation of runtime code and tests:
+make typecheck-all NVIM=nvim LUALS=lua-language-server PYTHON=python3
 ```
+
+`make test` includes the root lazy specification's command-completeness check.
+`test-packages` requires an already installed lazy.nvim checkout and a Neovim
+build with `vim.pack`; missing prerequisites fail rather than count as passes.
+It installs Rose from a local Git source, overlays the current working tree
+before loading, and tests both managers in isolated XDG directories. Nothing is
+committed, and your real Neovim configuration is not changed.
 
 `make test-speech` runs the offline speech suite against a loopback fixture that
 emulates the OpenAI, xAI and whisper.cpp wire formats with fake recorder, player

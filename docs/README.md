@@ -1,5 +1,7 @@
 > This directory includes historical documentation. For the dependency-free
-> native setup, read the repository README and [native reference](native.md).
+> native setup, start with [vim.pack or lazy.nvim installation](../README.md#install),
+> the [complete typed configuration reference](configuration.md), and the
+> [native API reference](native.md). In Neovim, use `:help rose-config`.
 > Old provider/build instructions below are not the native installation path.
 
 <!-- /qompassai/rose.nvim/docs/README.md -->

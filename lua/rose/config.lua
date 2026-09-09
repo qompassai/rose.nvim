@@ -1,6 +1,7 @@
 -- Native configuration. No provider, secret-store or project-local config reads.
 local M = {}
 
+---@type Rose.Config.Defaults
 M.defaults = {
   legacy = false,
   trusted = false,
@@ -108,6 +109,9 @@ local function validate_checks(checks)
   end
 end
 
+---Merge native setup input and validate core bounds; invalid input raises an error.
+---@param opts? Rose.Config
+---@return Rose.Config.Resolved
 function M.resolve(opts)
   opts = opts or {}
   assert(type(opts) == "table", "Rose setup options must be a table")
@@ -149,9 +153,16 @@ function M.resolve(opts)
   end
   validate_checks(config.checks)
   assert(type(config.workspace) == "string", "resolved workspace must be a string")
+  -- The typed Defaults/input merge gains exactly two required fields here:
+  -- validated real workspace and max_cycles derived from bounded max_repair_rounds.
+  -- LuaLS does not refine a nominal parent class from those field assignments.
+  ---@cast config Rose.Config.Resolved
   return config
 end
 
+---Resolve and publish native configuration; invalid input raises an error.
+---@param opts? Rose.Config
+---@return Rose.Config.Resolved
 function M.setup(opts)
   M.options = M.resolve(opts)
   return M.options

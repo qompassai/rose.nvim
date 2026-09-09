@@ -123,8 +123,10 @@ end)
 
 test("start refuses a non-loopback bind and never opens a socket", function()
   -- config.resolve already rejects non-loopback hosts, so bypass it to reach the server check.
-  local unsafe = config()
-  unsafe.webui = vim.tbl_extend("force", unsafe.webui, { host = "0.0.0.0" })
+  local resolved = config()
+  local unsafe = vim.tbl_extend("force", resolved, {
+    webui = vim.tbl_extend("force", resolved.webui, { host = "0.0.0.0" }),
+  })
   local ok, err = pcall(server.start, unsafe)
   assert(not ok, "non-loopback host must be refused")
   assert(tostring(err):find("loopback", 1, true), tostring(err))
